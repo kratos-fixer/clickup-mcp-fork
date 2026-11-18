@@ -150,7 +150,7 @@ async function loadTaskComments(id: string): Promise<DatedContentEvent[]> {
       // threaded replies via addComment's parent_comment_id.
       const headerBlock: ContentBlock = {
         type: "text",
-        text: `Comment by ${formatUser(comment.user)} on ${timestampToIso(comment.date)} (comment_id: ${comment.id}):`,
+        text: `Comment by ${formatUser(comment.user)} on ${timestampToIso(comment.date)} (comment_id: ${comment.id})${comment.resolved === true ? " [resolved]" : ""}:`,
       };
 
       const commentBodyBlocks: (ContentBlock | ImageMetadataBlock)[] = await convertClickUpTextItemsToToolCallResult(comment.comment ?? []);
