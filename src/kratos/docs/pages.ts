@@ -79,11 +79,12 @@ export async function getDocumentPages(input: GetDocumentPagesInput) {
       }
       break;
     }
-    if (cut) lines.push(cut);
     const hidden = pages.slice(shown);
     if (hidden.length) {
       lines.push(`truncated: ${hidden.length} pages not shown (page_ids: ${hidden.map((page) => page.id).join(", ")})`);
     }
+    // The cut page is read on first, so its continuation is the last line the caller follows.
+    if (cut) lines.push(cut);
     return toolText(lines);
   } catch (error) {
     return toolError("reading document pages", error);

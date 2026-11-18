@@ -239,7 +239,8 @@ describe("getDocumentPages", () => {
       mockDocs(200, doc);
       const first = (await tools.getDocumentPages.handler({ doc_id: "doc1" })).content[0].text;
       assert.ok(Buffer.byteLength(first, "utf8") < 1200, first);
-      const next = first.match(/truncated: page a cut; continue with page_ids=\["a"\] content_offset=(\d+)/);
+      const last = first.trimEnd().split("\n").pop() ?? "";
+      const next = last.match(/^truncated: page a cut; continue with page_ids=\["a"\] content_offset=(\d+)$/);
       assert.ok(next, first);
       assert.match(first, /truncated: 1 pages not shown \(page_ids: b\)/);
       const offset = Number(next[1]);
