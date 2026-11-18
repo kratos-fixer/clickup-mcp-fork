@@ -26,7 +26,7 @@ export const KRATOS_ROOT = "src/kratos";
 export const KRATOS_BASE_MODULES = ["clickup-api", "settings"] as const;
 export const KRATOS_ENTRY = "src/kratos/index.ts";
 // Upstream files allowed to import src/kratos/index.ts, each a seam row in UPSTREAM-PATCHES.md.
-export const UPSTREAM_SEAM_IMPORTERS = ["src/index.ts"] as const;
+export const UPSTREAM_SEAM_IMPORTERS = ["src/index.ts", "src/tools/doc-tools.ts"] as const;
 export const UPSTREAM_IMPORTABLE = ["src/shared/"] as const;
 export const ARCHITECTURE_BASELINE = ".github/scripts/architecture/baseline.json";
 

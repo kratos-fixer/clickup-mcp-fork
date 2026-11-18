@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { CONFIG } from "../shared/config";
 import { generateDocumentUrl } from "../shared/utils";
+import { DOC_PARENT_TYPES } from "../kratos";
 
 /**
  * Helper function to recursively extract all pages from nested page structure
@@ -332,7 +333,7 @@ export function registerDocumentToolsWrite(server: McpServer) {
     "createDocumentOrPage",
     [
       "Creates a new document with its first page, OR adds a page to an existing document.",
-      "To create a NEW document: provide space_id OR list_id + name + content",
+      "To create a NEW document: provide space_id OR folder_id OR list_id + name + content",
       "To add a page to EXISTING document: provide doc_id + name + content",
       "To create a sub-page: provide doc_id + parent_page_id + name + content",
       "Content is in markdown format and supports ClickUp's markdown features.",
@@ -342,15 +343,19 @@ export function registerDocumentToolsWrite(server: McpServer) {
       space_id: z
         .string()
         .optional()
-        .describe("Create NEW document in this space (mutually exclusive with list_id and doc_id)"),
+        .describe("Create NEW document in this space (mutually exclusive with folder_id, list_id and doc_id)"),
       list_id: z
         .string()
         .optional()
-        .describe("Create NEW document in this list (mutually exclusive with space_id and doc_id)"),
+        .describe("Create NEW document in this list (mutually exclusive with space_id, folder_id and doc_id)"),
+      folder_id: z
+        .string()
+        .optional()
+        .describe("Create NEW document in this folder (mutually exclusive with space_id, list_id and doc_id)"),
       doc_id: z
         .string()
         .optional()
-        .describe("Add page to EXISTING document with this ID (mutually exclusive with space_id and list_id)"),
+        .describe("Add page to EXISTING document with this ID (mutually exclusive with space_id, folder_id and list_id)"),
       parent_page_id: z
         .string()
         .optional()
@@ -370,15 +375,15 @@ export function registerDocumentToolsWrite(server: McpServer) {
       idempotentHint: false,
       openWorldHint: true
     },
-    async ({ space_id, list_id, doc_id, parent_page_id, name, content }) => {
+    async ({ space_id, list_id, folder_id, doc_id, parent_page_id, name, content }) => {
       try {
         // Validate mutually exclusive parameters
-        const locationParams = [space_id, list_id, doc_id].filter(Boolean).length;
+        const locationParams = [space_id, list_id, folder_id, doc_id].filter(Boolean).length;
         if (locationParams !== 1) {
           return {
             content: [{
               type: "text",
-              text: "Error: Provide exactly ONE of: space_id (new doc in space), list_id (new doc in list), or doc_id (page in existing doc)."
+              text: "Error: Provide exactly ONE of: space_id (new doc in space), list_id (new doc in list), folder_id (new doc in folder), or doc_id (page in existing doc)."
             }],
           };
         }
@@ -393,9 +398,9 @@ export function registerDocumentToolsWrite(server: McpServer) {
         }
 
         // Case 1: Create new document in space or list
-        if (space_id || list_id) {
-          const parentId = space_id || list_id;
-          const parentType = space_id ? 4 : 6; // 4=Space, 6=List
+        if (space_id || list_id || folder_id) {
+          const parentId = space_id || list_id || folder_id;
+          const parentType = folder_id ? DOC_PARENT_TYPES.folder : space_id ? 4 : 6; // 4=Space, 6=List
 
           // Create new document
           const docRequestBody = {

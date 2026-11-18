@@ -76,3 +76,66 @@ test("updateDocumentPage with prepend but no content or name keeps the at-least-
   assert.equal(bodies.length, 0);
   assert.match(result.content[0].text, /At least one of 'name' or 'content'/);
 });
+
+async function createDoc(t: any, args: Record<string, unknown>) {
+  t.mock.timers.enable();
+  process.env.CLICKUP_API_KEY = "test-key";
+  process.env.CLICKUP_TEAM_ID = "team1";
+
+  const { registerDocumentToolsWrite } = await import("../../tools/doc-tools");
+
+  const mockAgent = new MockAgent();
+  mockAgent.disableNetConnect();
+  setGlobalDispatcher(mockAgent);
+
+  const bodies: any[] = [];
+  const pool = mockAgent.get("https://api.clickup.com");
+  pool
+    .intercept({ path: "/api/v3/workspaces/team1/docs", method: "POST" })
+    .reply((opts) => {
+      bodies.push(JSON.parse(String(opts.body)));
+      return { statusCode: 200, data: { id: "newdoc" } };
+    })
+    .persist();
+  pool
+    .intercept({ path: "/api/v3/workspaces/team1/docs/newdoc/pages", method: "POST" })
+    .reply(200, { id: "firstpage" })
+    .persist();
+
+  const tools: Record<string, any> = {};
+  registerDocumentToolsWrite({
+    tool: (name: string, _desc: string, _schema: any, _opts: any, handler: any) => {
+      tools[name] = handler;
+    },
+  } as any);
+
+  const result = await tools.createDocumentOrPage({ name: "Release log", content: "Hi", ...args });
+
+  await mockAgent.close();
+  t.mock.timers.runAll();
+  t.mock.timers.reset();
+  return { result, bodies };
+}
+
+test("createDocumentOrPage with folder_id creates the doc with parent type 5", async (t) => {
+  const { result, bodies } = await createDoc(t, { folder_id: "folder9" });
+
+  assert.equal(bodies.length, 1);
+  assert.deepEqual(bodies[0].parent, { id: "folder9", type: 5 });
+  assert.ok(result.content[0].text.includes("Successfully created new document"));
+});
+
+test("createDocumentOrPage with folder_id and space_id sends nothing", async (t) => {
+  const { result, bodies } = await createDoc(t, { folder_id: "folder9", space_id: "space1" });
+
+  assert.equal(bodies.length, 0);
+  assert.match(result.content[0].text, /exactly ONE of/);
+  assert.match(result.content[0].text, /folder_id/);
+});
+
+test("createDocumentOrPage with space_id alone still sends parent type 4", async (t) => {
+  const { bodies } = await createDoc(t, { space_id: "space1" });
+
+  assert.equal(bodies.length, 1);
+  assert.deepEqual(bodies[0].parent, { id: "space1", type: 4 });
+});
