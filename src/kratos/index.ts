@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CONFIG } from "../shared/config";
 import { registerChecklistReadTool, registerChecklistWriteTools } from "./checklists";
+import { COMMENT_TOOLS, registerCommentToolsWrite } from "./comments";
 import { registerDocsToolsRead, DOCS_TOOLS } from "./docs";
 import { registerListByStatusTool } from "./list-by-status";
 import { CHECKLIST_WRITE_TOOLS, GET_TASK_CHECKLISTS_TOOL, LIST_TASKS_BY_STATUS_TOOL } from "./settings";
@@ -10,6 +11,7 @@ export { DOC_PARENT_TYPES } from "./docs";
 export const KRATOS_TOOLS = [
   LIST_TASKS_BY_STATUS_TOOL,
   ...DOCS_TOOLS,
+  ...COMMENT_TOOLS,
   GET_TASK_CHECKLISTS_TOOL,
   ...Object.values(CHECKLIST_WRITE_TOOLS),
 ] as const;
@@ -23,5 +25,6 @@ export function registerKratosToolsRead(server: McpServer) {
 
 // Upstream calls this in write mode only.
 export function registerKratosToolsWrite(server: McpServer) {
+  registerCommentToolsWrite(server);
   registerChecklistWriteTools(server);
 }

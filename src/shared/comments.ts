@@ -8,6 +8,7 @@ export interface ExistingComment {
   comment_text?: string;
   user?: { id?: number | string; username?: string };
   reply_count?: number;
+  resolved?: boolean;
 }
 
 /** Cursor into the comment list: the date and id of the last comment of the previous page */
