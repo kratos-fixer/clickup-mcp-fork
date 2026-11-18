@@ -5,14 +5,14 @@ export type FileChange = { path: string; additions: number; deletions: number };
 const git = (...args: string[]) => execFileSync("git", args, { encoding: "utf8" });
 
 export function parseNumstat(text: string): FileChange[] {
-  return text
-    .trim()
-    .split("\n")
-    .filter(Boolean)
-    .map((row) => {
-      const [added, deleted, path] = row.split("\t");
-      return { path, additions: Number(added) || 0, deletions: Number(deleted) || 0 };
-    });
+  return lines(text).map((row) => {
+    const [added, deleted, path] = row.split("\t");
+    return { path, additions: Number(added) || 0, deletions: Number(deleted) || 0 };
+  });
+}
+
+function lines(text: string): string[] {
+  return text.trim().split("\n").filter(Boolean);
 }
 
 // Only `seam` rows count: a `temporary` row is the author's own PR cherry-picked as written, 0 like a tag bump.
@@ -43,14 +43,10 @@ function prFiles(pr: string): { files: FileChange[]; range: string } {
     ["api", "--paginate", `repos/{owner}/{repo}/pulls/${pr}/files`, "--jq", ".[] | {filename, additions, deletions}"],
     { encoding: "utf8" }
   );
-  const files = rows
-    .trim()
-    .split("\n")
-    .filter(Boolean)
-    .map((row) => {
-      const file = JSON.parse(row) as { filename: string; additions: number; deletions: number };
-      return { path: file.filename, additions: file.additions, deletions: file.deletions };
-    });
+  const files = lines(rows).map((row) => {
+    const file = JSON.parse(row) as { filename: string; additions: number; deletions: number };
+    return { path: file.filename, additions: file.additions, deletions: file.deletions };
+  });
   const range = execFileSync(
     "gh",
     ["pr", "view", pr, "--json", "baseRefOid,headRefOid", "--jq", '[.baseRefOid,.headRefOid] | join("...")'],
