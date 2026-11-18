@@ -7,6 +7,8 @@ export type BaselineEntry = { violation: string; reason: string };
 
 const IMPORT = /(?:import|export)\s[^"'`;]*?from\s*["']([^"']+)["']|import\s*["']([^"']+)["']|(?:import|require)\s*\(\s*["']([^"']+)["']\s*\)/g;
 const SOURCE_EXT = /\.(?:[cm]?[jt]sx?)$/;
+// A slash starts a regex literal, not a division, after an operator, an opening bracket or one of these keywords.
+const REGEX_PRECEDES = /(?:^|[(,=:[!&|?{};+\-*%<>~^]|\b(?:return|typeof|case|do|else|in|of|void|yield|await|delete|throw|new))$/;
 
 export const isScanned = (path: string) => path.startsWith("src/") && /\.tsx?$/.test(path) && !path.endsWith(".d.ts");
 export const isTest = (path: string) => /(?:^|\/)(?:tests|__tests__)\//.test(path) || /\.(?:test|spec)\.tsx?$/.test(path);
@@ -48,6 +50,15 @@ function maskSource(source: string): { code: string; strings: string[] } {
         }
         end = Math.min(i + 1, source.length);
         code += end > i ? " " : "";
+      } else if (ch === "/" && REGEX_PRECEDES.test(code.trimEnd())) {
+        let inClass = false;
+        while (end < source.length && source[end] !== "\n" && (inClass || source[end] !== "/")) {
+          if (source[end] === "[") inClass = true;
+          else if (source[end] === "]") inClass = false;
+          end += source[end] === "\\" ? 2 : 1;
+        }
+        end = Math.min(end + 1, source.length);
+        code += blank(source.slice(i, end));
       } else if (ch === "\"" || ch === "'") {
         while (end < source.length && source[end] !== ch) end += source[end] === "\\" ? 2 : 1;
         end = Math.min(end + 1, source.length);
@@ -75,7 +86,7 @@ export function importSpecifiers(source: string): string[] {
 // Repo path of a relative import without its extension; packages resolve to undefined.
 export function resolveImport(importer: string, specifier: string): string | undefined {
   if (!specifier.startsWith(".")) return undefined;
-  return posix.normalize(posix.join(posix.dirname(importer), specifier)).replace(SOURCE_EXT, "");
+  return posix.normalize(posix.join(posix.dirname(importer), specifier)).replace(/\/$/, "").replace(SOURCE_EXT, "");
 }
 
 // A folder and its index.ts are the same module contract.

@@ -34,12 +34,23 @@ describe("import specifiers", () => {
     const source = 'const v = `import("../x") ${await import("../b")} ${ { k: `${require("./c")}` }.k } end`;\nimport "./d";';
     expect(importSpecifiers(source)).toEqual(["../b", "./c", "./d"]);
   });
+
+  test("skips regex literals so quotes and slashes inside them hide no later import", () => {
+    const source = [
+      "const q = /[\"']/g;",
+      "const u = /https?:\\/\\//.test(x) ? a / b / c : 0;",
+      "const r = /don't[/]/; import { d } from './d';",
+      "const e = await import(\"../e\");",
+    ].join("\n");
+    expect(importSpecifiers(source)).toEqual(["./d", "../e"]);
+  });
 });
 
 describe("upstream edges", () => {
   test.each([
     ["src/index.ts", "./kratos/index.js", undefined],
     ["src/index.ts", "./kratos", undefined],
+    ["src/index.ts", "./kratos/", undefined],
     ["src/index.ts", "./kratos/list-by-status", "upstream-into-kratos"],
     ["src/tools/task-tools.ts", "../kratos/index", "upstream-into-kratos"],
     ["src/tools/task-tools.ts", "../kratos/clickup-api", "upstream-into-kratos"],
@@ -57,6 +68,7 @@ describe("our edges", () => {
     ["src/kratos/a/x.ts", "../../clickup-text", "kratos-into-upstream"],
     ["src/kratos/a/x.ts", "./y", undefined],
     ["src/kratos/a/x.ts", "../clickup-api", undefined],
+    ["src/kratos/a/x.ts", "../clickup-api/", undefined],
     ["src/kratos/a/x.ts", "../clickup-api/request", "module-internals"],
     ["src/kratos/a/x.ts", "../settings", undefined],
     ["src/kratos/a/x.ts", "../b/y", "module-internals"],

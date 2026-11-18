@@ -39,5 +39,5 @@ bun .github/scripts/file-size.ts
 bun .github/scripts/architecture/cli.ts
 ```
 
-4. Open the PR against `main` of `kratos-fixer/clickup-mcp-fork`. `CI` (upstream), `kratos` and `architecture` (ours) must be green before the review chain starts.
+4. Open the PR against `main` of `kratos-fixer/kratos-clickup-mcp-fork`. `CI` (upstream), `kratos` and `architecture` (ours) must be green before the review chain starts.
 5. An upstream sync PR from the mirror branch `upstream-main` cannot add a ledger row, so a sync that brings a new upstream failure stays red and goes to the admin; it is never merged red. An expected failure that starts passing prints `NOW PASSING`, and the next sync PR removes its row.
