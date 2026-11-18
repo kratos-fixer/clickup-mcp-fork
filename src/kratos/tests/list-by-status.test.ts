@@ -51,6 +51,7 @@ test("one page: tasks listed, no nextPage, closed statuses included", async () =
   assert.deepEqual(query(paths[0]).getAll("statuses[]"), ["done", "in progress"]);
   assert.equal(query(paths[0]).get("include_closed"), "true");
   assert.equal(query(paths[0]).get("page"), "0");
+  assert.equal(query(paths[0]).get("include_timl"), "true");
   assert.match(text, /Task a1 \(task_id: a1\)/);
   assert.match(text, /status: done/);
   assert.match(text, /kratos \(user_id: 7\)/);
@@ -88,6 +89,7 @@ test("empty statuses ask for open tasks only; missing last_page ends the listing
   const result = await listTasksByStatus({ list_id: "L1", statuses: [], page: 0 });
   assert.equal(query(paths[0]).has("statuses[]"), false);
   assert.equal(query(paths[0]).has("include_closed"), false);
+  assert.equal(query(paths[0]).get("include_timl"), "true");
   assert.match(result.content[0].text, /statuses: all open/);
   assert.match(result.content[0].text, /nextPage: none/);
   await agent.close();

@@ -6,7 +6,8 @@ import { CLICKUP_API_BASE, CLICKUP_TASK_PAGE_SIZE, LIST_TASKS_BY_STATUS_TOOL } f
 export type TaskPage = { tasks: any[]; nextPage?: number };
 
 export function listTasksUrl(listId: string, statuses: string[], page: number): string {
-  const params = new URLSearchParams({ page: String(page) });
+  // include_timl adds tasks whose home is another list but which also sit in this one.
+  const params = new URLSearchParams({ page: String(page), include_timl: "true" });
   // Without statuses ClickUp returns the open ones; closed tasks are asked for only by name.
   if (statuses.length) {
     statuses.forEach((status) => params.append("statuses[]", status));
