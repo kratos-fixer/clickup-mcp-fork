@@ -121,7 +121,22 @@ export function registerSearchTools(server: McpServer, userData: any) {
 
       // Task ID Fallback Logic
       const potentialTaskIds = terms.filter(term => isTaskId(term) || isCustomTaskId(term));
-      const foundTaskIdsByFuse = new Set(Array.from(uniqueResults.keys()).map(id => id.toLowerCase()));
+      const foundTaskIdsByFuse = new Set<string>();
+      uniqueResults.forEach(({item}) => {
+        foundTaskIdsByFuse.add(String(item.id).toLowerCase());
+        if (item.custom_id) foundTaskIdsByFuse.add(String(item.custom_id).toLowerCase());
+      });
+
+      // A directly fetched task bypasses the index, so it must pass the same scope filters.
+      const inRequestedScope = (task: any): boolean => {
+        if (list_ids && list_ids.length > 0) {
+          const taskLists = [task.list?.id, ...(task.locations || []).map((l: any) => l?.id)];
+          if (!taskLists.some(id => id && list_ids.includes(String(id)))) return false;
+        }
+        if (space_ids && space_ids.length > 0 && !space_ids.includes(String(task.space?.id))) return false;
+        if (assignees.length > 0 && !(task.assignees || []).some((a: any) => assignees.map(String).includes(String(a?.id)))) return false;
+        return true;
+      };
 
       const taskIdsToFetchDirectly = potentialTaskIds.filter(id => {
         const lowerId = id.toLowerCase();
@@ -142,7 +157,7 @@ export function registerSearchTools(server: McpServer, userData: any) {
             );
             if (response.ok) {
               const task = await response.json();
-              if (task && typeof task.id === 'string') {
+              if (task && typeof task.id === 'string' && inRequestedScope(task)) {
                 const existing = uniqueResults.get(task.id);
                 if (!existing || 0 < existing.score) {
                   uniqueResults.set(task.id, {item: task, score: 0});
