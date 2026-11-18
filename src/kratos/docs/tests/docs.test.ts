@@ -51,6 +51,21 @@ afterEach(async () => {
 });
 
 describe("searchDocuments", () => {
+  test("read-minimal mode does not register searchDocuments", async () => {
+    const { CONFIG } = await import("../../../shared/config");
+    const { registerKratosToolsRead } = await import("../../index");
+    const previous = CONFIG.mode;
+    CONFIG.mode = "read-minimal";
+    const names: string[] = [];
+    try {
+      registerKratosToolsRead({ tool: (name: string) => names.push(name) } as any);
+    } finally {
+      CONFIG.mode = previous;
+    }
+    assert.ok(!names.includes("searchDocuments"));
+    assert.ok(names.includes("listTasksByStatus"));
+  });
+
   test("a named place sends parent_id and parent_type, deleted and archived false", async () => {
     const paths = mockDocs(200, { docs: [doc] });
     const result = await tools.searchDocuments.handler({ parent_id: "90150001", parent_kind: "folder" });
