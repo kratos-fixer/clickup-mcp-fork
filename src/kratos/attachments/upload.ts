@@ -1,4 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { isAbsolute } from "path";
 import { z } from "zod";
 import { captionToFilename, resolveAttachmentSource, uploadTaskAttachment } from "../../shared/attachments";
 import { CONFIG } from "../../shared/config";
@@ -27,6 +28,10 @@ export function registerAttachmentToolsWrite(server: McpServer) {
     { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     async ({ task_id, source, file_name }) => {
       try {
+        // A relative path would resolve against the server's launch directory, not anything the caller chose.
+        if (!/^(https?:|data:)/i.test(source) && !isAbsolute(source)) {
+          throw new Error(`local path must be absolute: ${source}`);
+        }
         // Resolve first: every refusal (secret file, size, non-image URL) happens before any ClickUp request.
         const resolved = await resolveAttachmentSource(source);
         if (resolved.kind === "existing") {

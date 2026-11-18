@@ -98,6 +98,7 @@ test("refusals send nothing to ClickUp", async () => {
     [dotfile, /credential or configuration file/],
     ["https://example.com/report.pdf", /not an image/],
     [big, /exceeds the 1 MB upload limit/],
+    ["report.csv", /local path must be absolute: report\.csv/],
     ["https://t1.clickup-attachments.com/att9/old.png", /already a ClickUp attachment, nothing uploaded/],
   ];
   for (const [source, message] of cases) {
