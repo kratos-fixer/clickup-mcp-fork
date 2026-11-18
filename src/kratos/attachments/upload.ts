@@ -30,7 +30,7 @@ export function registerAttachmentToolsWrite(server: McpServer) {
         // Resolve first: every refusal (secret file, size, non-image URL) happens before any ClickUp request.
         const resolved = await resolveAttachmentSource(source);
         if (resolved.kind === "existing") {
-          return toolError(UPLOAD_ATTACHMENT_TOOL, new Error(`already a ClickUp attachment, nothing uploaded: ${resolved.url}`));
+          throw new Error(`already a ClickUp attachment, nothing uploaded: ${resolved.url}`);
         }
         const name = file_name ? captionToFilename(file_name, resolved.suggestedName) : resolved.suggestedName;
         const taskId = await resolveTaskId(task_id);

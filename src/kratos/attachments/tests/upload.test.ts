@@ -103,6 +103,7 @@ test("refusals send nothing to ClickUp", async () => {
   for (const [source, message] of cases) {
     const result = await upload({ source });
     assert.equal(result.isError, true, source);
+    assert.match(result.content[0].text, /^Error uploadAttachment failed: /, source);
     assert.match(result.content[0].text, message);
   }
   assert.equal(requests.length, 0);
