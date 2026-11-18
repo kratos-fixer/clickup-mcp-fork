@@ -97,6 +97,34 @@
     {
       "name": "createTaskFromTemplate",
       "description": "Create a task in a list from a task template, with the template's fields, checklists and subtasks. Give exactly one of template_id or template_name."
+    },
+    {
+      "name": "getTaskChecklists",
+      "description": "List a task's checklists with their items, ids and resolved state, including nested items."
+    },
+    {
+      "name": "createChecklist",
+      "description": "Create an empty checklist on a task."
+    },
+    {
+      "name": "renameChecklist",
+      "description": "Rename a checklist."
+    },
+    {
+      "name": "deleteChecklist",
+      "description": "Delete a checklist with all its items."
+    },
+    {
+      "name": "createChecklistItem",
+      "description": "Add an unresolved item at the end of a checklist."
+    },
+    {
+      "name": "editChecklistItem",
+      "description": "Change a checklist item's text, or resolve or unresolve it."
+    },
+    {
+      "name": "deleteChecklistItem",
+      "description": "Delete one checklist item."
     }
   ],
   "user_config": {
