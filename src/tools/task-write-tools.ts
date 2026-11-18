@@ -986,14 +986,18 @@ export function registerTaskToolsWrite(server: McpServer, userData: any) {
 /** Waits before each read-back of a new task's Custom Task ID; the first read is immediate. */
 const CUSTOM_ID_READ_BACK_DELAYS_MS = [0, 400, 800, 1600];
 
+/** Set once a full read-back found no Custom Task ID, so later creates in a workspace without them read only once. */
+let customIdsLookUnavailable = false;
+
 /**
  * Read a newly created task until ClickUp has assigned its Custom Task ID, or give up after a few
- * short tries (about 3 s in total). Workspaces without Custom Task IDs never get one, so a task
- * that has none after the last try is reported without it. A failed read stops the retries: the
- * task exists, and a missing custom_id is not worth failing the call over.
+ * short tries (about 3 s in total). Workspaces without Custom Task IDs never get one, so after one
+ * fruitless run later creates read once only, until a custom_id shows up again. A failed read stops
+ * the retries: the task exists, and a missing custom_id is not worth failing the call over.
  */
 async function readBackCustomId(taskId: string): Promise<string | undefined> {
-  for (const delayMs of CUSTOM_ID_READ_BACK_DELAYS_MS) {
+  const delays = customIdsLookUnavailable ? CUSTOM_ID_READ_BACK_DELAYS_MS.slice(0, 1) : CUSTOM_ID_READ_BACK_DELAYS_MS;
+  for (const delayMs of delays) {
     if (delayMs > 0) {
       await new Promise(resolve => setTimeout(resolve, delayMs));
     }
@@ -1006,6 +1010,7 @@ async function readBackCustomId(taskId: string): Promise<string | undefined> {
       }
       const task = await response.json();
       if (task?.custom_id) {
+        customIdsLookUnavailable = false;
         return task.custom_id;
       }
     } catch (error) {
@@ -1013,6 +1018,7 @@ async function readBackCustomId(taskId: string): Promise<string | undefined> {
       return undefined;
     }
   }
+  customIdsLookUnavailable = true;
   return undefined;
 }
 

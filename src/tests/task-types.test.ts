@@ -229,3 +229,30 @@ test("createTask retries the read-back until ClickUp has assigned the Custom Tas
   (mockAgent as any).assertNoPendingInterceptors();
   await mockAgent.close();
 });
+
+test("createTask reads back once only after a full read-back found no Custom Task ID", async () => {
+  // Real timers: the first create waits through all retries (about 3 s).
+  const { mockAgent, client, tools, serverStub } = setup();
+  const { registerTaskToolsWrite } = await import("../tools/task-write-tools");
+
+  for (const id of ["noC1", "noC2"]) {
+    client.intercept({ path: "/api/v2/list/listN/task", method: "POST" }).reply(200, {
+      id, name: id, status: { status: "open" }, assignees: [], url: `https://app.clickup.com/t/${id}`,
+    });
+  }
+  for (let i = 0; i < 4; i++) {
+    client.intercept({ path: "/api/v2/task/noC1", method: "GET" }).reply(200, { id: "noC1", custom_id: null });
+  }
+  client.intercept({ path: "/api/v2/task/noC2", method: "GET" }).reply(200, { id: "noC2", custom_id: null });
+
+  registerTaskToolsWrite(serverStub, { user: { username: "me", id: "u1" } });
+  await tools.createTask({ list_id: "listN", name: "noC1" });
+  const started = Date.now();
+  const result = await tools.createTask({ list_id: "listN", name: "noC2" });
+
+  assert.ok(Date.now() - started < 400, "second create must not wait for retries");
+  assert.ok(!result.content[0].text.includes("custom_id: "), result.content[0].text);
+  const pending = (mockAgent as any).pendingInterceptors().filter((i: any) => !i.persist);
+  assert.deepEqual(pending.map((i: any) => i.path), []);
+  await mockAgent.close();
+});

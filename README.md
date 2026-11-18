@@ -353,11 +353,12 @@ Notes:
 **Custom Task IDs.** If the workspace uses the
 [Custom Task IDs](https://help.clickup.com/hc/en-us/articles/6309943321751-Use-Custom-Task-IDs) ClickApp,
 every tool that takes a task (`getTaskById`, `updateTask`, `addComment`, `editComment`,
-`getTimeEntries`, `createTimeEntry`, the parent/dependency/link IDs of `createTask` and
-`updateTask`, and `searchTasks` terms) also accepts the custom ID, e.g. `ENG-302`. It is
+`getTimeEntries`, `createTimeEntry`, `parent_task_id` on `createTask`, `parent_task_id`,
+`waiting_on`, `blocking` and `linked_tasks` on `updateTask`, and `searchTasks` terms) also accepts the custom ID, e.g. `ENG-302`. It is
 resolved once via `?custom_task_ids=true&team_id=<CLICKUP_TEAM_ID>` (cached for a minute)
-and the generated ID is used from then on. `getTaskById` and the write responses show both
-(`task_id`, `custom_id`).
+and the generated ID is used from then on. `getTaskById`, `createTask` and `updateTask` show
+`task_id` and, when ClickUp has assigned one, `custom_id`; `createTask` may omit it when ClickUp
+has not assigned it within about 3 s.
 
 **Task types** (`write` mode). `custom_item_id` on `createTask` and `updateTask` sets the
 task type, either as the numeric ID (e.g. `1006`) or by name (e.g. `"Bug"`, resolved via
