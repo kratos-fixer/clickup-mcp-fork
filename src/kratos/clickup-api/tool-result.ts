@@ -6,8 +6,9 @@ export function toolText(lines: readonly string[]): CallToolResult {
 }
 
 export function toolError(action: string, error: unknown): CallToolResult {
-  console.error("Error " + action + ":", error);
   const message = error instanceof Error ? error.message : String(error);
-  // Errors from outside this module reach the model too, so the token is stripped here as well.
+  const logged = error instanceof Error ? (error.stack ?? message) : message;
+  // Errors from outside this module reach the model and stderr too, so the token is stripped here as well.
+  console.error(withoutToken("Error " + action + ": " + logged));
   return { content: [{ type: "text", text: "Error " + action + ": " + withoutToken(message) }], isError: true };
 }

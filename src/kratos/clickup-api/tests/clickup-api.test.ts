@@ -292,4 +292,14 @@ describe("the token never reaches a message", () => {
     const text = String(api.toolError("reading task", new Error("header test-key leaked")).content[0].text);
     assert.equal(text, "Error reading task: header [redacted] leaked");
   });
+
+  test("toolError never logs the token of a foreign error to stderr", (t) => {
+    const logged = t.mock.method(console, "error", () => {});
+    api.toolError("reading task", new Error("header test-key leaked"));
+    assert.equal(logged.mock.callCount(), 1);
+    for (const arg of logged.mock.calls[0].arguments) {
+      const shown = arg instanceof Error ? `${arg.message}\n${arg.stack}` : String(arg);
+      assert.equal(shown.includes("test-key"), false, shown);
+    }
+  });
 });
