@@ -11,6 +11,7 @@ Ledger of every upstream file this fork changes. Upstream: `hauptsacheNet/clicku
 | P3 | `src/index.ts` | One import of `src/kratos/index.ts`, `registerKratosToolsRead(server)` in each mode branch and `registerKratosToolsWrite(server)` in the `write` branch. | Upstream registers every tool in `initializeServer`; a tool reaches the server only through that function. | seam | None |
 | P4 | `src/tools/doc-tools.ts`, `README.md`, `manifest.json` | `updateDocumentPage` takes an optional `prepend` flag and sends `content_edit_mode: "prepend"`; `append` and `prepend` together return an error and send nothing. | The edit mode is chosen inside the author's handler. | seam | None |
 | P5 | `src/tools/task-write-tools.ts`, `CHANGELOG.md` | `updateTask` gains `remove_assignees`, sent as `assignees.rem` next to `assignees.add`. | Removing an assignee belongs to the ordinary `updateTask` call, not to a separate tool. | seam | None |
+| P6 | `src/shared/comments.ts`, `src/tools/task-tools.ts` | `getTaskById` prints `[resolved]` on a resolved comment. | The header is printed inside upstream `loadTaskComments`; a kratos tool would duplicate `getTaskById`. | seam | None |
 
 `main` equals tag `v1.10.0` plus the rows above whose PRs have merged, and our paths (see `docs/dev/playbook.md`); a row whose PR is still open describes a pending change. Kind is `seam` (a permanent edit, counted in PR size) or `temporary` (the author's own PR or an upstream defect fixed locally, with its URL; counted as 0). The PR that edits an upstream file adds its row here in the same PR.
 
