@@ -5,7 +5,7 @@ export type FileChange = { path: string; additions: number; deletions: number };
 const git = (...args: string[]) => execFileSync("git", args, { encoding: "utf8" });
 
 export function parseNumstat(text: string): FileChange[] {
-  return lines(text).map((row) => {
+  return text.trim().split("\n").filter(Boolean).map((row) => {
     const [added, deleted, path] = row.split("\t");
     return { path: renameTarget(path), additions: Number(added) || 0, deletions: Number(deleted) || 0 };
   });
@@ -17,35 +17,23 @@ export function renameTarget(path: string): string {
   return path.includes(" => ") ? path.split(" => ")[1] : path;
 }
 
-function lines(text: string): string[] {
-  return text.trim().split("\n").filter(Boolean);
-}
-
-// Only `seam` rows count: a `temporary` row is the author's own PR cherry-picked as written, 0 like a tag bump.
-export function seamPaths(patchDiff: string): Set<string> {
+// Paths named in ledger rows that start with `prefix` (`+` reads a diff), of one `kind` when given.
+function rowPaths(text: string, prefix: string, kind?: string): Set<string> {
   const paths = new Set<string>();
-  for (const row of patchDiff.split("\n")) {
-    if (!/^\+\|/.test(row)) continue;
-    const cells = row.slice(1).split("|").map((cell) => cell.trim());
-    if (cells[5] !== "seam") continue;
+  for (const row of text.split("\n").filter((line) => line.startsWith(`${prefix}|`))) {
+    const cells = row.slice(prefix.length).split("|").map((cell) => cell.trim());
+    if (kind && cells[5] !== kind) continue;
     for (const match of (cells[2] ?? "").matchAll(/`([^`]+)`/g)) paths.add(match[1].replace(/:[\d,-]+$/, ""));
   }
   return paths;
 }
 
-// Every backticked path in a ledger row, whatever its kind; a row must exist for each upstream file a PR touches.
-export function ledgerPaths(ledger: string): Set<string> {
-  const paths = new Set<string>();
-  for (const row of ledger.split("\n")) {
-    if (!row.startsWith("|")) continue;
-    for (const match of (row.split("|")[2] ?? "").matchAll(/`([^`]+)`/g)) paths.add(match[1].replace(/:[\d,-]+$/, ""));
-  }
-  return paths;
-}
-
-export function unledgered(files: FileChange[], ledger: Set<string>): string[] {
-  return files.map((file) => file.path).filter((path) => !isOurPath(path) && !ledger.has(path));
-}
+// Only `seam` rows count: a `temporary` row is the author's own PR cherry-picked as written, 0 like a tag bump.
+export const seamPaths = (patchDiff: string) => rowPaths(patchDiff, "+", "seam");
+export const ledgerPaths = (ledger: string) => rowPaths(ledger, "");
+// Each upstream file a PR touches needs a ledger row of any kind.
+export const unledgered = (files: FileChange[], ledger: Set<string>) =>
+  files.map((file) => file.path).filter((path) => !isOurPath(path) && !ledger.has(path));
 
 export function countCode(files: FileChange[], seams: Set<string>): number {
   return files.reduce((total, file) => {
