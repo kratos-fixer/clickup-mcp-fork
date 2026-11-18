@@ -2,6 +2,8 @@
 
 How code in this fork is laid out, and how it lives next to the upstream project `hauptsacheNet/clickup-mcp` (pinned in `UPSTREAM.json`). The CI check `architecture` enforces the import rules below; `docs/dev/playbook.md` holds the rest of the development rules.
 
+> **Scope: our rules judge our code only.** Upstream code follows upstream's structure and cannot be judged by the rules in this file. These rules apply to exactly two things: our code in `src/kratos/**`, and the seams where our code meets upstream, which are the seam importers named in `.github/scripts/settings.ts` (`UPSTREAM_SEAM_IMPORTERS`, today `src/index.ts`) and the rows of `UPSTREAM-PATCHES.md`. The `architecture` check never fails on an upstream file: an upstream-only file passes whatever it imports, and a test in `.github/scripts/__tests__/architecture.test.ts` proves it.
+
 ## 1. Two kinds of code
 
 | Code | Where | Whose rules |

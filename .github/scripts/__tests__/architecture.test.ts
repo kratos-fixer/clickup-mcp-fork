@@ -58,6 +58,20 @@ describe("upstream edges", () => {
     ["src/tools/task-tools.ts", "../kratosx/a", undefined],
     ["src/tests/addComment.test.ts", "../tools/task-tools", undefined],
   ])("%s imports %s → %p", (importer, specifier, rule) => expect(judgeImport(importer, specifier)).toBe(rule));
+
+  test("an upstream-only file that would break every one of our rules still passes", () => {
+    const source = [
+      'import { a } from "../resources/doc-resources";',
+      'import { b } from "./doc-tools";',
+      'import { c } from "../shared/attachments/inner";',
+      'import { d } from "../index";',
+      'const e = await import("../../package.json");',
+      ...Array.from({ length: 1200 }, (_, n) => `export const line${n} = ${n};`),
+    ].join("\n");
+    for (const path of ["src/tools/task-tools.ts", "src/shared/config.ts", "src/clickup-text.ts", "src/tests/x.test.ts"]) {
+      expect(scanFile(path, source)).toEqual([]);
+    }
+  });
 });
 
 describe("our edges", () => {
