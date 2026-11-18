@@ -74,10 +74,12 @@ export function botFindings(data: PrData): { id: string; answered: boolean }[] {
 export function finalReviewOpen(comments: IssueComment[], author: string, head: string): string[] {
   const marker = `${FINAL_REVIEW_PREFIX}${head} `;
   const latest = comments.filter((comment) => comment.user?.login === author && (comment.body ?? "").split(/\r?\n/, 1)[0]?.startsWith(marker)).at(-1);
-  const lines = (latest?.body ?? "").trim().split(/\r?\n/).slice(1);
-  if (lines[0] !== FINAL_REVIEW_DATA_OPEN) return [];
+  if (!latest) return [];
+  const lines = (latest.body ?? "").trim().split(/\r?\n/).slice(1);
   const end = lines.indexOf(FINAL_REVIEW_DATA_CLOSE, 1);
-  return lines.slice(1, end < 0 ? undefined : end)
+  // A marked review with a broken data block must not clear the gate.
+  if (lines[0] !== FINAL_REVIEW_DATA_OPEN || end < 0) return ["final-review-malformed"];
+  return lines.slice(1, end)
     .filter((line) => line.endsWith(": open") || (line.endsWith(": noted") && !/^[^\s:]+ \[P3\] /.test(line)))
     .map((line) => line.split(/[ :]/, 1)[0]!)
     .filter(Boolean);

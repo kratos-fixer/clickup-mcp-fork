@@ -61,6 +61,11 @@ describe("review-verdicts", () => {
     expect(openFindings(pr({ ...base, issueComments: [review(HEAD), summary] }))).toEqual(["cr-3"]);
   });
 
+  test("final review without a data block keeps the check red", () => {
+    const broken = { user: { login: AUTHOR }, body: `<!-- final-review head=${HEAD} task=t -->\n### text` };
+    expect(openFindings(pr({ reviews: [], comments: [], issueComments: [broken] }))).toEqual(["final-review-malformed"]);
+  });
+
   test("DeepSeek body findings are open until answered in a summary", () => {
     const deepseek = { id: 7, user: { login: "bot" }, body: "<!-- deepseek-review head=x -->\nFindings outside the diff lines:\n- `a.ts:3` — P2 bug\n\n- `b.ts:?` — P3 nit" };
     const base = { reviews: [deepseek], comments: [] };
