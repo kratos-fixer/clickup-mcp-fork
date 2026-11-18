@@ -226,6 +226,27 @@ describe("getDocumentPages", () => {
     }
   });
 
+  test("the whole text, separators and truncated lines included, stays within maxResponseSizeMB", async () => {
+    const { CONFIG } = await import("../../../shared/config");
+    const previous = CONFIG.maxResponseSizeMB;
+    CONFIG.maxResponseSizeMB = 0.001;
+    const budget = Math.floor(0.001 * 1024 * 1024);
+    try {
+      mockDocs(200, [{ id: "a", name: "A", content: "" }]);
+      const head = Buffer.byteLength((await tools.getDocumentPages.handler({ doc_id: "doc1" })).content[0].text, "utf8") - 1;
+      // Page a alone fills the budget exactly, so only the separators and page b push the text past it.
+      mockDocs(200, [
+        { id: "a", name: "A", content: "x".repeat(budget - head) },
+        { id: "b", name: "B", content: "small" },
+      ]);
+      const text = (await tools.getDocumentPages.handler({ doc_id: "doc1", page_ids: ["a", "b", "nope"] })).content[0].text;
+      assert.ok(Buffer.byteLength(text, "utf8") <= budget, `${Buffer.byteLength(text, "utf8")} > ${budget}`);
+      assert.match(text, /truncated: page a cut; continue with page_ids=\["a"\] content_offset=\d+$/);
+    } finally {
+      CONFIG.maxResponseSizeMB = previous;
+    }
+  });
+
   test("a page larger than maxResponseSizeMB is cut and read on with content_offset", async () => {
     const { CONFIG } = await import("../../../shared/config");
     const previous = CONFIG.maxResponseSizeMB;

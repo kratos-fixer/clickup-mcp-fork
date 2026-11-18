@@ -55,13 +55,19 @@ export async function getDocumentPages(input: GetDocumentPagesInput) {
     }
 
     const offset = input.content_offset ?? 0;
-    let left = CONFIG.maxResponseSizeMB * 1024 * 1024;
+    // The budget covers the whole text: header lines, the "\n" joins and the worst-case truncation lines.
+    const tail = `truncated: ${pages.length} pages not shown (page_ids: ${pages.map((page) => page.id).join(", ")})\n`
+      + `truncated: page ${"x".repeat(Math.max(0, ...pages.map((page) => page.id.length)))} cut; continue with page_ids=[""] content_offset=${Number.MAX_SAFE_INTEGER}`;
+    let left = CONFIG.maxResponseSizeMB * 1024 * 1024
+      - Buffer.byteLength(tail, "utf8")
+      - lines.reduce((sum, line) => sum + Buffer.byteLength(line, "utf8") + 1, 0);
     let shown = 0;
     let cut: string | undefined;
     for (const page of pages) {
       const content = (page.content ?? "").slice(offset);
       const block = pageBlock(input.doc_id, { ...page, content });
-      const size = Buffer.byteLength(block, "utf8");
+      // Each block is pushed with an empty line after it: two "\n" joins.
+      const size = Buffer.byteLength(block, "utf8") + 2;
       if (size <= left) {
         lines.push(block, "");
         left -= size;
@@ -71,7 +77,7 @@ export async function getDocumentPages(input: GetDocumentPagesInput) {
       // A page bigger than the whole budget is shown in part, so it can still be read in steps.
       if (shown === 0) {
         const head = pageBlock(input.doc_id, { ...page, content: "" });
-        const room = new Uint8Array(Math.max(0, left - Buffer.byteLength(head, "utf8")));
+        const room = new Uint8Array(Math.max(0, left - Buffer.byteLength(head, "utf8") - 2));
         const { read } = new TextEncoder().encodeInto(content, room);
         lines.push(head + content.slice(0, read), "");
         cut = `truncated: page ${page.id} cut; continue with page_ids=["${page.id}"] content_offset=${offset + read}`;
