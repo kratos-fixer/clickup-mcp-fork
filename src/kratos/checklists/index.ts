@@ -1,8 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { CLICKUP_V2_BASE, clickupDelete, clickupGet, clickupPost, clickupPut, toolError, toolText } from "./clickup-api";
-import { TASK_ID_FORMAT_HINT, resolveTaskId, taskIdSchema } from "../shared/task-ids";
-import { CHECKLIST_WRITE_TOOLS, GET_TASK_CHECKLISTS_TOOL } from "./settings";
+import { CLICKUP_V2_BASE, clickupDelete, clickupGet, clickupPost, clickupPut, toolError, toolText } from "../clickup-api";
+import { TASK_ID_FORMAT_HINT, resolveTaskId, taskIdSchema } from "../../shared/task-ids";
+import { CHECKLIST_WRITE_TOOLS, GET_TASK_CHECKLISTS_TOOL } from "../settings";
 
 export interface ChecklistItem {
   id: string;
