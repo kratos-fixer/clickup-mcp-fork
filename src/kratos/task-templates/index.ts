@@ -1,7 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { CLICKUP_V2_BASE, clickupGet, clickupPost, teamUrl, toolError, toolText } from "../clickup-api";
-import { CREATE_TASK_FROM_TEMPLATE_TOOL, GET_TASK_TEMPLATES_TOOL, TEMPLATE_SEARCH_MAX_PAGES } from "../settings";
+import { CREATE_TASK_FROM_TEMPLATE_TOOL, GET_TASK_TEMPLATES_TOOL } from "../settings";
+import { TEMPLATE_SEARCH_MAX_PAGES } from "./settings";
 
 export type TaskTemplate = { id: string; name: string };
 type TemplateLookup = { match?: TaskTemplate; seen: TaskTemplate[] };

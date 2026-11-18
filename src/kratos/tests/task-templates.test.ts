@@ -91,7 +91,7 @@ test("getTaskTemplates with an empty first page says there are none", async () =
 });
 
 test("getTaskTemplates by name stops after TEMPLATE_SEARCH_MAX_PAGES pages", async () => {
-  const { TEMPLATE_SEARCH_MAX_PAGES } = await import("../settings");
+  const { TEMPLATE_SEARCH_MAX_PAGES } = await import("../task-templates/settings");
   const pages = Array.from({ length: TEMPLATE_SEARCH_MAX_PAGES }, (_, i) => ({ body: { templates: [template(`t${i}`, `T${i}`)] } }));
   const { agent, seen } = mockClickUp(pages);
   const { getTaskTemplates } = await loadTools();
