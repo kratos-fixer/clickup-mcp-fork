@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Task types.** New `custom_item_id` parameter on `createTask` and `updateTask`, as a number or a task type name (e.g. `"Bug"`) resolved via `GET /team/{team_id}/custom_item`; an unknown name aborts before anything is written and lists the available types.
 - `getTaskById` shows `custom_id` and `task_type: <name> (custom_item_id: N)`; the `createTask`/`updateTask` responses include `custom_id` and, when a task type was set, `task_type`. When ClickUp's create response omits `custom_id`, `createTask` reads the new task back up to four times over about 3 s; once a run finds none (a workspace without Custom Task IDs), later creates read it back once only.
 - `updateTask` accepts `remove_assignees`, a list of user ids sent as `assignees.rem`. It can be combined with `assignees` in the same call or sent alone.
+- **Task templates.** `getTaskTemplates` lists the workspace's task templates (`template_id` and name) page by page, or finds one by name case-insensitively; `createTaskFromTemplate` creates a task in a list from a template given by `template_id` or `template_name`.
 
 ## [1.10.0] - 2026-11-02
 
