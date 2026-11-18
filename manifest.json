@@ -88,7 +88,7 @@
     },
     {
       "name": "createDocumentOrPage",
-      "description": "Create a new document with its first page (using space_id or list_id), add a page to an existing document (using doc_id), or create a sub-page (using doc_id and parent_page_id). Supports markdown content."
+      "description": "Create a new document with its first page (using space_id, folder_id or list_id), add a page to an existing document (using doc_id), or create a sub-page (using doc_id and parent_page_id). Supports markdown content."
     }
   ],
   "user_config": {
