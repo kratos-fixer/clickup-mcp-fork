@@ -399,7 +399,11 @@ async function coerceValue(field: ClickUpCustomField, raw: unknown): Promise<{ v
       if (isBlank(raw)) {
         return { value: null, display: "(cleared)" };
       }
-      const ms = typeof raw === "number" ? raw : new Date(String(raw)).getTime();
+      // A bare YYYY-MM-DD becomes 04:00 local, ClickUp's date-only time, so it reads back as the same day.
+      const day = typeof raw === "string" ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw.trim()) : null;
+      const ms = day
+        ? new Date(Number(day[1]), Number(day[2]) - 1, Number(day[3]), 4).getTime()
+        : typeof raw === "number" ? raw : new Date(String(raw)).getTime();
       if (!Number.isFinite(ms)) {
         throw new Error(`Field "${field.name}" needs a date as ISO string or epoch ms, got "${String(raw)}".`);
       }
@@ -415,7 +419,7 @@ async function coerceValue(field: ClickUpCustomField, raw: unknown): Promise<{ v
         return { value: null, display: "(cleared)" };
       }
       // An {add, rem} diff or array would reach the API unvalidated and fail there.
-      const parsed = typeof raw === "object" ? NaN : Number(raw);
+      const parsed = typeof raw === "object" || typeof raw === "boolean" ? NaN : Number(raw);
       if (!Number.isFinite(parsed)) {
         throw new Error(`Field "${field.name}" expects a number, got ${JSON.stringify(raw)}.`);
       }

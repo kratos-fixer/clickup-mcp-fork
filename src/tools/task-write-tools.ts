@@ -610,7 +610,7 @@ export function registerTaskToolsWrite(server: McpServer, userData: any) {
 
         // Check if there's anything to update (including tags, dependencies and
         // custom fields which are handled separately)
-        if (Object.keys(updateBody).length === 0 && tags === undefined && blocking === undefined && waiting_on === undefined && linked_tasks === undefined && custom_fields === undefined) {
+        if (Object.keys(updateBody).length === 0 && tags === undefined && blocking === undefined && waiting_on === undefined && linked_tasks === undefined && resolvedCustomFields.length === 0) {
           return {
             content: [
               {
@@ -656,7 +656,7 @@ export function registerTaskToolsWrite(server: McpServer, userData: any) {
         // as a failed update: the writes already happened, so keep the result and
         // surface the refresh problem as a warning instead.
         let refreshWarning: string | undefined;
-        if ((tags !== undefined || blocking !== undefined || waiting_on !== undefined || linked_tasks !== undefined || custom_fields !== undefined) && Object.keys(updateBody).length === 0) {
+        if ((tags !== undefined || blocking !== undefined || waiting_on !== undefined || linked_tasks !== undefined || resolvedCustomFields.length > 0) && Object.keys(updateBody).length === 0) {
           try {
             const refreshResponse = await fetch(`https://api.clickup.com/api/v2/task/${task_id}`, {
               headers: { Authorization: CONFIG.apiKey },

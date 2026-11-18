@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `getTaskById` now renders `users` and `labels` custom fields by name (previously users printed as `[object Object]`) and `date` fields as an ISO timestamp instead of the raw epoch value.
 - `createTask` reports a custom field as written only when the created task carries it; a field ClickUp ignores (it does not apply to the task type) is listed under `custom_field_warnings`. Rating fields (API type `emoji`) are writable, `manual_progress` is sent as `{ current }`, and numeric fields reject object or array values locally.
 - `updateTask` writes custom fields after the task `PUT`, so a rejected update leaves them untouched. Date custom fields send `value_options: { time: true }` when the input carries a time, and a date-only value is read back as its calendar day (`YYYY-MM-DD`) instead of a UTC timestamp that can fall on the previous day.
+- A bare `YYYY-MM-DD` date is written as 04:00 local time (ClickUp's date-only time), so it stays on that day in every timezone. Number fields reject booleans, and `updateTask` with an empty `custom_fields` array reports "No updates provided".
 
 ## [1.10.0] - 2026-11-02
 

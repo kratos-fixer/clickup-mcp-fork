@@ -308,8 +308,9 @@ test("date fields send value_options.time and date-only reads keep the calendar 
   ]);
   assert.deepEqual(buildCreateCustomFieldsBody(resolved), [
     { id: "f4", value: Date.parse("2026-11-18T15:30:00Z"), value_options: { time: true } },
-    { id: "f9", value: Date.parse("2026-11-18"), value_options: { time: false } },
+    { id: "f9", value: new Date(2026, 10, 18, 4).getTime(), value_options: { time: false } },
   ]);
+  assert.equal(formatCustomFieldReadValue({ type: "date", value: String(resolved[1].value) }), "2026-11-18");
 
   const dateOnly = new Date(2026, 10, 18, 4, 0, 0, 0).getTime();
   assert.equal(formatCustomFieldReadValue({ type: "date", value: String(dateOnly) }), "2026-11-18");
@@ -589,6 +590,7 @@ test("numeric fields reject object values and manual progress is sent as { curre
     /Field "Points" expects a number/
   );
   await assert.rejects(() => resolveCustomFields("listNum", [{ name: "Points", value: ["1"] }]), /expects a number/);
+  await assert.rejects(() => resolveCustomFields("listNum", [{ name: "Points", value: true }]), /expects a number/);
 
   await mockAgent.close();
   t.mock.timers.runAll();
