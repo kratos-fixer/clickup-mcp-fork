@@ -3,6 +3,7 @@ import { CONFIG } from "../shared/config";
 import { registerDocsToolsRead, DOCS_TOOLS } from "./docs";
 import { registerListByStatusTool } from "./list-by-status";
 import { registerTaskTemplatesRead, registerTaskTemplatesWrite } from "./task-templates";
+import { COMMENT_TOOLS, registerCommentToolsWrite } from "./comments";
 import { CREATE_TASK_FROM_TEMPLATE_TOOL, GET_TASK_TEMPLATES_TOOL, LIST_TASKS_BY_STATUS_TOOL } from "./settings";
 
 export { DOC_PARENT_TYPES } from "./docs";
@@ -10,6 +11,7 @@ export { DOC_PARENT_TYPES } from "./docs";
 export const KRATOS_TOOLS = [
   LIST_TASKS_BY_STATUS_TOOL,
   ...DOCS_TOOLS,
+  ...COMMENT_TOOLS,
   GET_TASK_TEMPLATES_TOOL,
   CREATE_TASK_FROM_TEMPLATE_TOOL,
 ] as const;
@@ -23,5 +25,6 @@ export function registerKratosToolsRead(server: McpServer) {
 
 // Upstream calls this in write mode only.
 export function registerKratosToolsWrite(server: McpServer) {
+  registerCommentToolsWrite(server);
   registerTaskTemplatesWrite(server);
 }
