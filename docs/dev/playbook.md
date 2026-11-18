@@ -34,6 +34,7 @@ find src/kratos -type f -name '*.test.ts' | xargs -r node --test -r ts-node/regi
 npx tsc --noEmit
 bun .github/scripts/comment-length/cli.ts origin/main...HEAD
 bun .github/scripts/pr-size.ts --range origin/main...HEAD
+bun .github/scripts/pr-size.ts --range origin/main...HEAD --ledger
 bun .github/scripts/file-size.ts
 ```
 

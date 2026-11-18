@@ -33,6 +33,20 @@ export function seamPaths(patchDiff: string): Set<string> {
   return paths;
 }
 
+// Every backticked path in a ledger row, whatever its kind; a row must exist for each upstream file a PR touches.
+export function ledgerPaths(ledger: string): Set<string> {
+  const paths = new Set<string>();
+  for (const row of ledger.split("\n")) {
+    if (!row.startsWith("|")) continue;
+    for (const match of (row.split("|")[2] ?? "").matchAll(/`([^`]+)`/g)) paths.add(match[1].replace(/:[\d,-]+$/, ""));
+  }
+  return paths;
+}
+
+export function unledgered(files: FileChange[], ledger: Set<string>): string[] {
+  return files.map((file) => file.path).filter((path) => !isOurPath(path) && !ledger.has(path));
+}
+
 export function countCode(files: FileChange[], seams: Set<string>): number {
   return files.reduce((total, file) => {
     if (!isOurPath(file.path) && !seams.has(file.path)) return total;
@@ -44,9 +58,15 @@ export function countCode(files: FileChange[], seams: Set<string>): number {
 }
 
 function main(): void {
-  const [flag, range] = process.argv.slice(2);
-  if (flag !== "--range" || !range?.includes("...")) throw new Error("usage: bun .github/scripts/pr-size.ts --range <base>...<head>");
+  const [flag, range, mode] = process.argv.slice(2);
+  if (flag !== "--range" || !range?.includes("...")) throw new Error("usage: bun .github/scripts/pr-size.ts --range <base>...<head> [--ledger]");
   const files = parseNumstat(git("diff", "--numstat", range));
+  if (mode === "--ledger") {
+    const missing = unledgered(files, ledgerPaths(git("show", `${range.split("...")[1] || "HEAD"}:${LEDGER_FILE}`)));
+    for (const path of missing) console.log(`no ${LEDGER_FILE} row: ${path}`);
+    if (missing.length) process.exitCode = 1;
+    return;
+  }
   const code = countCode(files, seamPaths(git("diff", range, "--", LEDGER_FILE)));
   console.log(`code ${code} / limit ${CODE_LINES_PER_PR_LIMIT}${code > CODE_LINES_PER_PR_LIMIT ? " over" : ""}`);
   if (code > CODE_LINES_PER_PR_LIMIT) process.exitCode = 1;

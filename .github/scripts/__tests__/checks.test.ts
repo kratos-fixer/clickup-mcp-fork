@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { isOurPath } from "../settings.ts";
 import { scanDiff, scanSource } from "../comment-length/index.ts";
 import { checkFile } from "../file-size.ts";
-import { countCode, parseNumstat, seamPaths } from "../pr-size.ts";
+import { countCode, ledgerPaths, parseNumstat, seamPaths, unledgered } from "../pr-size.ts";
 import { expectedFailures, failedTitles, matchesTestGlob, unexpectedFailures } from "../upstream-tests.ts";
 
 describe("isOurPath", () => {
@@ -59,6 +59,14 @@ describe("PR size", () => {
     const renamed = parseNumstat("3\t1\tsrc/{tools => kratos}/a.ts\n2\t0\told.ts => src/kratos/b.ts\n");
     expect(renamed.map((file) => file.path)).toEqual(["src/kratos/a.ts", "src/kratos/b.ts"]);
     expect(countCode(renamed, new Set())).toBe(6);
+  });
+  test("an upstream file without a ledger row is reported", () => {
+    const p1 = "| P1 | `src/tools/task-tools.ts` | cherry-pick | author's PR | temporary | None |\n";
+    const p3 = "| P3 | `src/index.ts:12` | register | contract | seam | None |\n";
+    expect(unledgered(files, ledgerPaths(`# Ledger\n${p1}${p3}`))).toEqual([]);
+    expect(unledgered(files, ledgerPaths(p3))).toEqual(["src/tools/task-tools.ts"]);
+    expect(ledgerPaths(readFileSync("UPSTREAM-PATCHES.md", "utf8")).has("src/tools/task-tools.ts")).toBe(true);
+    expect(unledgered(files, new Set())).toEqual(["src/index.ts", "src/tools/task-tools.ts"]);
   });
 });
 

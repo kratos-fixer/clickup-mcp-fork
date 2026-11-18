@@ -23,7 +23,7 @@ jobs:
         id: scope
         run: |
           changed="$(git diff --name-only "$BASE_SHA" HEAD)"
-          if grep -qvE '\.md$' <<< "$changed"; then
+          if grep -qx 'UPSTREAM-PATCHES.md' <<< "$changed" || grep -qvE '\.md$' <<< "$changed"; then
             echo 'run=true' >> "$GITHUB_OUTPUT"
           else
             status=$?
@@ -58,6 +58,9 @@ jobs:
       - name: PR size
         if: steps.scope.outputs.run == 'true'
         run: bun .github/scripts/pr-size.ts --range "$BASE_SHA...HEAD"
+      - name: Ledger rows
+        if: steps.scope.outputs.run == 'true' && github.event_name == 'pull_request' && github.head_ref != 'upstream-main'
+        run: bun .github/scripts/pr-size.ts --range "$BASE_SHA...HEAD" --ledger
       - name: File size
         if: steps.scope.outputs.run == 'true'
         run: bun .github/scripts/file-size.ts
