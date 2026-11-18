@@ -89,6 +89,14 @@
     {
       "name": "createDocumentOrPage",
       "description": "Create a new document with its first page (using space_id or list_id), add a page to an existing document (using doc_id), or create a sub-page (using doc_id and parent_page_id). Supports markdown content."
+    },
+    {
+      "name": "getTaskTemplates",
+      "description": "List the workspace's task templates with template_id and name, one page at a time, or find one template by name (case-insensitive)."
+    },
+    {
+      "name": "createTaskFromTemplate",
+      "description": "Create a task in a list from a task template, with the template's fields, checklists and subtasks. Give exactly one of template_id or template_name."
     }
   ],
   "user_config": {
