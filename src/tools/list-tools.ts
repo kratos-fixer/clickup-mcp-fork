@@ -125,7 +125,7 @@ export function registerListToolsRead(server: McpServer) {
       "Lists the custom fields defined on a list, with their ids, types and valid options.",
       "ALWAYS call this before createTask/updateTask with `custom_fields`, so you know the exact field names and option names to use.",
       "Field references are matched by NAME first: emoji, case, accents and extra spaces are ignored, and a unique PARTIAL name also matches (e.g. `domain` resolves `🧩 Domain`). Pass the exact field `id` when a name is ambiguous.",
-      "Values passed to createTask/updateTask accept the option/user NAME (matched the same way) or the raw id.",
+      "Values passed to createTask/updateTask accept the full option name (emoji, case and accents ignored, no partial match), the user's id, email or exact username, or the raw id.",
       "Types: drop_down/labels take an option name or id; users take a user id, email or exact username (or `{add, rem}` to revoke); checkbox true/false; date an ISO string or epoch ms; number a number; short_text/text a string."
     ].join("\n"),
     {
