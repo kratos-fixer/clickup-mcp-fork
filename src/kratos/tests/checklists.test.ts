@@ -22,7 +22,12 @@ const checklist = {
 const taskJson = {
   id: "task123",
   checklists: [
-    { id: "c2", name: "Review", orderindex: 1, items: [{ id: "n1", name: "Nested", orderindex: 0, resolved: false, parent: "n0" }] },
+    {
+      id: "c2",
+      name: "Review",
+      orderindex: 1,
+      items: [{ id: "n1", name: "Nested", orderindex: 0, resolved: false, parent: "n0", children: [{ id: "n2", name: "Deep", orderindex: 1, resolved: true, parent: "n1" }] }],
+    },
     checklist,
   ],
 };
@@ -65,8 +70,9 @@ test("getTaskChecklists prints checklists and flat items in order with ids and r
       "Checklist: Tasks (checklist_id: c1), 1 of 2 resolved",
       "- [x] T1 (item_id: i1, resolved: true)",
       "- [ ] T2 (item_id: i2, resolved: false)",
-      "Checklist: Review (checklist_id: c2), 0 of 1 resolved",
+      "Checklist: Review (checklist_id: c2), 1 of 2 resolved",
       "- [ ] Nested (item_id: n1, resolved: false)",
+      "- [x] Deep (item_id: n2, resolved: true)",
     ].join("\n")
   );
   await agent.close();
@@ -128,6 +134,16 @@ test("editChecklistItem with a new name sends only the name", async () => {
   const tools = await loadTools();
   await tools.editChecklistItem({ checklist_id: "c1", checklist_item_id: "i2", name: "T2b" });
   assert.deepEqual(calls[0].body, { name: "T2b" });
+  await agent.close();
+});
+
+test("editChecklistItem with neither name nor resolved makes no request", async () => {
+  const { agent, calls } = mockOne("PUT", "/api/v2/checklist/c1/checklist_item/i2", 200, { checklist });
+  const tools = await loadTools();
+  const result = await tools.editChecklistItem({ checklist_id: "c1", checklist_item_id: "i2" });
+  assert.equal(calls.length, 0);
+  assert.equal(result.isError, true);
+  assert.match(text(result), /name, resolved or both/);
   await agent.close();
 });
 

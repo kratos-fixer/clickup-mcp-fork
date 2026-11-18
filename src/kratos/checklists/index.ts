@@ -9,6 +9,7 @@ export interface ChecklistItem {
   name: string;
   orderindex?: number;
   resolved?: boolean;
+  children?: ChecklistItem[];
 }
 
 export interface Checklist {
@@ -27,9 +28,17 @@ const checklistUrl = (checklistId: string) => `${CLICKUP_V2_BASE}/checklist/${en
 const itemUrl = (checklistId: string, itemId: string) =>
   `${checklistUrl(checklistId)}/checklist_item/${encodeURIComponent(itemId)}`;
 
-// Nested items are listed in the same flat row as their parent; only order and state matter here.
+// ClickUp may nest descendants under children or list them flat; dedupe by id so each prints once.
+function flattenItems(items: readonly ChecklistItem[], seen = new Map<string, ChecklistItem>()): ChecklistItem[] {
+  for (const item of items) {
+    if (!seen.has(item.id)) seen.set(item.id, item);
+    flattenItems(item.children ?? [], seen);
+  }
+  return [...seen.values()];
+}
+
 export function formatChecklist(checklist: Checklist): string[] {
-  const items = byOrder(checklist.items ?? []);
+  const items = byOrder(flattenItems(checklist.items ?? []));
   const resolved = items.filter((item) => item.resolved).length;
   return [
     `Checklist: ${checklist.name} (checklist_id: ${checklist.id}), ${resolved} of ${items.length} resolved`,
@@ -137,6 +146,7 @@ export function registerChecklistWriteTools(server: McpServer) {
       const body: { name?: string; resolved?: boolean } = {};
       if (name !== undefined) body.name = name;
       if (resolved !== undefined) body.resolved = resolved;
+      if (Object.keys(body).length === 0) return toolError("editing checklist item", new Error("pass name, resolved or both"));
       try {
         return checklistResult(await clickupPut(itemUrl(checklist_id, checklist_item_id), body));
       } catch (error) {
