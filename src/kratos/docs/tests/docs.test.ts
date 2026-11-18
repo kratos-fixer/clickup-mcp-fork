@@ -33,7 +33,7 @@ const doc = {
 before(async () => {
   process.env.CLICKUP_API_KEY = "test-key";
   process.env.CLICKUP_TEAM_ID = "team1";
-  const { registerKratosToolsRead } = await import("../index");
+  const { registerKratosToolsRead } = await import("../../index");
   tools = {};
   registerKratosToolsRead({
     tool: (name: string, ...rest: any[]) => (tools[name] = { schema: rest[1], handler: rest[rest.length - 1] }),

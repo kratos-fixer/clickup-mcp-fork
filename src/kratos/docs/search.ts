@@ -2,7 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { generateDocumentUrl } from "../../shared/utils";
 import { clickupGet, toolError, toolText, workspaceUrl } from "../clickup-api";
-import { DOC_PARENT_TYPES, DOC_SEARCH_LIMIT_MAX, DOC_SEARCH_LIMIT_MIN, SEARCH_DOCUMENTS_TOOL } from "../settings";
+import { DOC_PARENT_TYPES, DOC_SEARCH_LIMIT_MAX, DOC_SEARCH_LIMIT_MIN, SEARCH_DOCUMENTS_TOOL } from "./settings";
 
 export type DocParentKind = keyof typeof DOC_PARENT_TYPES;
 const PARENT_KINDS = Object.keys(DOC_PARENT_TYPES) as [DocParentKind, ...DocParentKind[]];

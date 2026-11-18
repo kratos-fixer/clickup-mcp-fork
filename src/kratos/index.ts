@@ -3,7 +3,7 @@ import { registerDocsToolsRead, DOCS_TOOLS } from "./docs";
 import { registerListByStatusTool } from "./list-by-status";
 import { LIST_TASKS_BY_STATUS_TOOL } from "./settings";
 
-export { DOC_PARENT_TYPES } from "./settings";
+export { DOC_PARENT_TYPES } from "./docs";
 
 export const KRATOS_TOOLS = [LIST_TASKS_BY_STATUS_TOOL, ...DOCS_TOOLS] as const;
 
