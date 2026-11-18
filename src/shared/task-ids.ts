@@ -8,12 +8,12 @@ const GLOBAL_REFRESH_INTERVAL = 60000; // 60 seconds - that is the rate limit ti
  * Checks if a string looks like a ClickUp Custom Task ID (e.g. "ENG-302", "DEV-1234").
  *
  * Workspaces with the Custom Task IDs ClickApp give every task a prefix + counter ID
- * in addition to its generated ID. The prefix is letters/digits starting with a letter,
+ * in addition to its generated ID. The prefix is letters/digits/underscores starting with a letter,
  * the counter is numeric, and the two are always joined by a hyphen - which is what
  * keeps them apart from generated IDs (those are bare alphanumerics, see isTaskId).
  */
 export function isCustomTaskId(str: string): boolean {
-  return /^[a-z][a-z0-9]{0,15}-\d{1,10}$/i.test(str);
+  return /^[a-z][a-z0-9_]{0,15}-\d{1,10}$/i.test(str);
 }
 
 /**

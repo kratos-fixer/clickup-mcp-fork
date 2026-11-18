@@ -28,6 +28,8 @@ test("isCustomTaskId tells custom IDs apart from generated IDs", async () => {
   assert.equal(isCustomTaskId("ENG-302"), true);
   assert.equal(isCustomTaskId("dev-1"), true, "case-insensitive");
   assert.equal(isCustomTaskId("ABC2-12345"), true, "prefixes may contain digits");
+  assert.equal(isCustomTaskId("DEV_OPS-302"), true, "prefixes may contain underscores");
+  assert.equal(isCustomTaskId("_DEV-302"), false, "prefixes start with a letter");
   assert.equal(isCustomTaskId("86ey1qwck"), false, "generated IDs have no hyphen");
   assert.equal(isCustomTaskId("CU-86ey1qwck"), false, "CU- prefixed generated IDs are not custom IDs");
   assert.equal(isCustomTaskId("https://app.clickup.com/t/ENG-302"), false);
