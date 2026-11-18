@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CONFIG } from "../shared/config";
+import { UPLOAD_ATTACHMENT_TOOL, registerAttachmentToolsWrite } from "./attachments";
 import { registerChecklistReadTool, registerChecklistWriteTools } from "./checklists";
 import { COMMENT_TOOLS, registerCommentToolsWrite } from "./comments";
 import { registerDocsToolsRead, DOCS_TOOLS } from "./docs";
@@ -21,6 +22,7 @@ export const KRATOS_TOOLS = [
   ...Object.values(CHECKLIST_WRITE_TOOLS),
   ADD_TASK_DEPENDENCY_TOOL,
   DELETE_TASK_DEPENDENCY_TOOL,
+  UPLOAD_ATTACHMENT_TOOL,
 ] as const;
 
 export function registerKratosToolsRead(server: McpServer) {
@@ -37,4 +39,5 @@ export function registerKratosToolsWrite(server: McpServer) {
   registerTaskTemplatesWrite(server);
   registerChecklistWriteTools(server);
   registerTaskDependencyTools(server);
+  registerAttachmentToolsWrite(server);
 }
