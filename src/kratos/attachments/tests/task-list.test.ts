@@ -53,7 +53,9 @@ test("taskAttachmentsBlock falls back to the url file name and ? for a missing s
 
 test("getTaskById prints the Attachments block, an image missing from the description included", async (t) => {
   t.mock.timers.enable();
-  const { registerTaskToolsRead } = await import("../../../tools/task-tools");
+  const { addTaskContentExtension, registerTaskToolsRead } = await import("../../../tools/task-tools");
+  const { taskAttachmentsBlock } = await import("../index");
+  addTaskContentExtension((task) => taskAttachmentsBlock(task.id, task.attachments));
   const agent = new MockAgent();
   agent.disableNetConnect();
   setGlobalDispatcher(agent);

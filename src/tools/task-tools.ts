@@ -9,7 +9,6 @@ import { downloadImages } from "../shared/image-processing";
 import { ExistingComment, fetchAllTopLevelComments, fetchRepliesByComment } from "../shared/comments";
 import { formatCustomFieldReadValue } from "../shared/custom-fields";
 import { describeCustomItem } from "../shared/task-types";
-import { taskAttachmentsBlock } from "../kratos";
 
 // Read-specific utility functions
 
@@ -103,6 +102,14 @@ async function fetchTaskTimeEntries(taskId: string): Promise<any[]> {
   }
 }
 
+// Extra blocks appended to getTaskById, registered by the server entry point.
+type TaskContentExtension = (task: any) => Promise<ContentBlock>;
+const taskContentExtensions: TaskContentExtension[] = [];
+
+export function addTaskContentExtension(extension: TaskContentExtension) {
+  taskContentExtensions.push(extension);
+}
+
 async function loadTaskContent(taskId: string): Promise<(ContentBlock | ImageMetadataBlock)[]> {
   const response = await fetch(
     `https://api.clickup.com/api/v2/task/${taskId}?include_markdown_description=true&include_subtasks=true`,
@@ -110,7 +117,7 @@ async function loadTaskContent(taskId: string): Promise<(ContentBlock | ImageMet
   );
   const task = await response.json();
 
-  const [taskMetadata, content, attachmentsBlock] = await Promise.all([
+  const [taskMetadata, content, extraBlocks] = await Promise.all([
     // Create the task metadata block using the helper functions
     (async () => {
       const timeEntries = await fetchTaskTimeEntries(task.id);
@@ -121,10 +128,10 @@ async function loadTaskContent(taskId: string): Promise<(ContentBlock | ImageMet
       task.markdown_description || "",
       task.attachments || []
     ),
-    taskAttachmentsBlock(task.id, task.attachments),
+    Promise.all(taskContentExtensions.map((extend) => extend(task))),
   ]);
 
-  return [taskMetadata, ...content, attachmentsBlock];
+  return [taskMetadata, ...content, ...extraBlocks];
 }
 
 async function loadTaskComments(id: string): Promise<DatedContentEvent[]> {
