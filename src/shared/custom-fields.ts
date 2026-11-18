@@ -404,7 +404,9 @@ async function coerceValue(field: ClickUpCustomField, raw: unknown): Promise<{ v
       const ms = day
         ? new Date(Number(day[1]), Number(day[2]) - 1, Number(day[3]), 4).getTime()
         : typeof raw === "number" ? raw : new Date(String(raw)).getTime();
-      if (!Number.isFinite(ms)) {
+      // new Date() rolls 2026-02-31 over to March instead of failing.
+      const rolledOver = day !== null && new Date(ms).getDate() !== Number(day[3]);
+      if (!Number.isFinite(ms) || rolledOver) {
         throw new Error(`Field "${field.name}" needs a date as ISO string or epoch ms, got "${String(raw)}".`);
       }
       const hasTime = typeof raw === "number" ? ms % 86_400_000 !== 0 : /T\d{2}:\d{2}/.test(String(raw));
@@ -450,6 +452,9 @@ async function coerceValue(field: ClickUpCustomField, raw: unknown): Promise<{ v
       // text / short_text / email / phone / url
       if (isBlank(raw)) {
         return { value: null, display: "(cleared)" };
+      }
+      if (typeof raw === "object") {
+        throw new Error(`Field "${field.name}" expects text, got ${JSON.stringify(raw)}.`);
       }
       const text = String(raw);
       return { value: text, display: text };
@@ -501,7 +506,10 @@ export async function resolveCustomFields(
 
 /** Build the `custom_fields` array for the create-task request body. */
 export function buildCreateCustomFieldsBody(resolved: ResolvedCustomField[]): Array<{ id: string; value: unknown; value_options?: { time: boolean } }> {
-  return resolved.map((field) => ({ id: field.fieldId, ...fieldValueBody(field) }));
+  // A new task has no value to clear, and the create body only accepts null for object/array values.
+  return resolved
+    .filter((field) => field.value !== null)
+    .map((field) => ({ id: field.fieldId, ...fieldValueBody(field) }));
 }
 
 function fieldValueBody(field: ResolvedCustomField): { value: unknown; value_options?: { time: boolean } } {
@@ -527,14 +535,17 @@ export async function writeCustomFieldsToTask(
   const warnings: string[] = [];
   for (const field of resolved) {
     try {
-      const response = await fetch(`https://api.clickup.com/api/v2/task/${taskId}/field/${field.fieldId}`, {
-        method: "POST",
-        headers: {
-          Authorization: CONFIG.apiKey,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(fieldValueBody(field)),
-      });
+      // POST { value: null } does not clear a field; ClickUp clears through DELETE.
+      const response = await fetch(`https://api.clickup.com/api/v2/task/${taskId}/field/${field.fieldId}`, field.value === null
+        ? { method: "DELETE", headers: { Authorization: CONFIG.apiKey } }
+        : {
+            method: "POST",
+            headers: {
+              Authorization: CONFIG.apiKey,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(fieldValueBody(field)),
+          });
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         warnings.push(`Failed to set "${field.fieldName}": ${response.status} ${response.statusText} ${JSON.stringify(errorData)}`);
@@ -583,7 +594,7 @@ export function formatCustomFieldReadValue(field: any): string | null {
   }
 
   if (field.type === "drop_down") {
-    const match = options.find((option) => option.orderindex === value);
+    const match = options.find((option) => String(option.orderindex) === String(value) || String(option.id) === String(value));
     return match ? optionLabel(match) || String(value) : String(value);
   }
   if (field.type === "labels") {

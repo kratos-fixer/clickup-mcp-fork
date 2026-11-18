@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `createTask` reports a custom field as written only when the created task carries it; a field ClickUp ignores (it does not apply to the task type) is listed under `custom_field_warnings`. Rating fields (API type `emoji`) are writable, `manual_progress` is sent as `{ current }`, and numeric fields reject object or array values locally.
 - `updateTask` writes custom fields after the task `PUT`, so a rejected update leaves them untouched. Date custom fields send `value_options: { time: true }` when the input carries a time, and a date-only value is read back as its calendar day (`YYYY-MM-DD`) instead of a UTC timestamp that can fall on the previous day.
 - A bare `YYYY-MM-DD` date is written as 04:00 local time (ClickUp's date-only time), so it stays on that day in every timezone. Number fields reject booleans, and `updateTask` with an empty `custom_fields` array reports "No updates provided".
+- `null` clears a custom field through `DELETE /task/{id}/field/{field_id}` (a `POST` with `value: null` left the old value in place) and is left out of the create body. Impossible dates such as `2026-02-31` and object values for text fields are rejected; a `drop_down` read by option id shows the option name.
 
 ## [1.10.0] - 2026-11-02
 

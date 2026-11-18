@@ -373,6 +373,41 @@ test("updateTask leaves custom fields untouched when the task PUT fails", async 
   t.mock.timers.reset();
 });
 
+test("null clears through DELETE, bad dates and object text values are refused, drop_down reads by id", async (t) => {
+  t.mock.timers.enable();
+  const { clearCustomFieldCaches, resolveCustomFields, writeCustomFieldsToTask, buildCreateCustomFieldsBody, formatCustomFieldReadValue } =
+    await loadCustomFields();
+  clearCustomFieldCaches();
+
+  const mockAgent = new MockAgent();
+  mockAgent.disableNetConnect();
+  setGlobalDispatcher(mockAgent);
+  const client = mockAgent.get("https://api.clickup.com");
+  client.intercept({ path: "/api/v2/list/listClear/field", method: "GET" }).reply(200, { fields: FIELDS });
+  let deleted = "";
+  client.intercept({ path: "/api/v2/task/taskClear/field/f2", method: "DELETE" }).reply((opts) => {
+    deleted = String(opts.path);
+    return { statusCode: 200, data: {} };
+  });
+
+  const resolved = await resolveCustomFields("listClear", [{ name: "Domain", value: null }]);
+  assert.deepEqual(buildCreateCustomFieldsBody(resolved), []);
+  const result = await writeCustomFieldsToTask("taskClear", resolved);
+  assert.equal(deleted, "/api/v2/task/taskClear/field/f2");
+  assert.equal(result.written.length, 1);
+
+  await assert.rejects(() => resolveCustomFields("listClear", [{ name: "Maintenance Window", value: "2026-02-31" }]), /needs a date/);
+  await assert.rejects(() => resolveCustomFields("listClear", [{ name: "Customer", value: { add: ["x"] } }]), /expects text/);
+  assert.equal(
+    formatCustomFieldReadValue({ type: "drop_down", value: "o2", type_config: { options: FIELDS[1].type_config.options } }),
+    "Network"
+  );
+
+  await mockAgent.close();
+  t.mock.timers.runAll();
+  t.mock.timers.reset();
+});
+
 test("getListCustomFields tool lists fields, options and writability", async (t) => {
   t.mock.timers.enable();
   const { clearCustomFieldCaches } = await loadCustomFields();
