@@ -19,21 +19,17 @@ export function renameTarget(path: string): string {
 
 // Paths named in ledger rows that start with `prefix` (`+` reads a diff), of one `kind` when given.
 function rowPaths(text: string, prefix: string, kind?: string): Set<string> {
-  const paths = new Set<string>();
-  for (const row of text.split("\n").filter((line) => line.startsWith(`${prefix}|`))) {
-    const cells = row.slice(prefix.length).split("|").map((cell) => cell.trim());
-    if (kind && cells[5] !== kind) continue;
-    for (const match of (cells[2] ?? "").matchAll(/`([^`]+)`/g)) paths.add(match[1].replace(/:[\d,-]+$/, ""));
-  }
-  return paths;
+  const rows = text.split("\n").filter((line) => line.startsWith(`${prefix}|`));
+  const cells = rows.map((row) => row.slice(prefix.length).split("|").map((cell) => cell.trim()));
+  const named = cells.filter((row) => !kind || row[5] === kind).flatMap((row) => [...(row[2] ?? "").matchAll(/`([^`]+)`/g)]);
+  return new Set(named.map((match) => match[1].replace(/:[\d,-]+$/, "")));
 }
 
 // Only `seam` rows count: a `temporary` row is the author's own PR cherry-picked as written, 0 like a tag bump.
 export const seamPaths = (patchDiff: string) => rowPaths(patchDiff, "+", "seam");
 export const ledgerPaths = (ledger: string) => rowPaths(ledger, "");
 // Each upstream file a PR touches needs a ledger row of any kind.
-export const unledgered = (files: FileChange[], ledger: Set<string>) =>
-  files.map((file) => file.path).filter((path) => !isOurPath(path) && !ledger.has(path));
+export const unledgered = (files: FileChange[], ledger: Set<string>) => files.map((f) => f.path).filter((p) => !isOurPath(p) && !ledger.has(p));
 
 export function countCode(files: FileChange[], seams: Set<string>): number {
   return files.reduce((total, file) => {
@@ -51,9 +47,8 @@ function main(): void {
   const files = parseNumstat(git("diff", "--numstat", range));
   if (mode === "--ledger") {
     const missing = unledgered(files, ledgerPaths(git("show", `${range.split("...")[1] || "HEAD"}:${LEDGER_FILE}`)));
-    for (const path of missing) console.log(`no ${LEDGER_FILE} row: ${path}`);
-    if (missing.length) process.exitCode = 1;
-    return;
+    missing.forEach((path) => console.log(`no ${LEDGER_FILE} row: ${path}`));
+    return void (process.exitCode = missing.length ? 1 : 0);
   }
   const code = countCode(files, seamPaths(git("diff", range, "--", LEDGER_FILE)));
   console.log(`code ${code} / limit ${CODE_LINES_PER_PR_LIMIT}${code > CODE_LINES_PER_PR_LIMIT ? " over" : ""}`);
