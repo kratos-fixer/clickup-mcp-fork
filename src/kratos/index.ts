@@ -4,12 +4,14 @@ import { registerDocsToolsRead, DOCS_TOOLS } from "./docs";
 import { registerListByStatusTool } from "./list-by-status";
 import { ADD_TASK_DEPENDENCY_TOOL, DELETE_TASK_DEPENDENCY_TOOL, registerTaskDependencyTools } from "./task-dependencies";
 import { LIST_TASKS_BY_STATUS_TOOL } from "./settings";
+import { COMMENT_TOOLS, registerCommentToolsWrite } from "./comments";
 
 export { DOC_PARENT_TYPES } from "./docs";
 
 export const KRATOS_TOOLS = [
   LIST_TASKS_BY_STATUS_TOOL,
   ...DOCS_TOOLS,
+  ...COMMENT_TOOLS,
   ADD_TASK_DEPENDENCY_TOOL,
   DELETE_TASK_DEPENDENCY_TOOL,
 ] as const;
@@ -22,5 +24,6 @@ export function registerKratosToolsRead(server: McpServer) {
 
 // Upstream calls this in write mode only.
 export function registerKratosToolsWrite(server: McpServer) {
+  registerCommentToolsWrite(server);
   registerTaskDependencyTools(server);
 }
