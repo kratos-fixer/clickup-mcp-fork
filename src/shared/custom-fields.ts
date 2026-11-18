@@ -409,14 +409,14 @@ async function coerceValue(field: ClickUpCustomField, raw: unknown): Promise<{ v
       if (isBlank(raw)) {
         return { value: null, display: "(cleared)" };
       }
-      if (typeof raw === "object") {
-        return { value: raw, display: JSON.stringify(raw) };
-      }
-      const parsed = Number(raw);
+      // An {add, rem} diff or array would reach the API unvalidated and fail there.
+      const parsed = typeof raw === "object" ? NaN : Number(raw);
       if (!Number.isFinite(parsed)) {
-        throw new Error(`Field "${field.name}" expects a number, got "${String(raw)}".`);
+        throw new Error(`Field "${field.name}" expects a number, got ${JSON.stringify(raw)}.`);
       }
-      return { value: parsed, display: String(parsed) };
+      // ClickUp stores manual progress as { current }, not a bare number.
+      const value = field.type === "manual_progress" ? { current: parsed } : parsed;
+      return { value, display: String(parsed) };
     }
     case "tasks": {
       // ClickUp writes a `tasks` (relationship) field through the same

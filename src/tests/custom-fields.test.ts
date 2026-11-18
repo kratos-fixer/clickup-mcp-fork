@@ -472,6 +472,41 @@ test("a tasks field is written as an {add, rem} diff and cannot be cleared with 
   t.mock.timers.reset();
 });
 
+test("numeric fields reject object values and manual progress is sent as { current }", async (t) => {
+  t.mock.timers.enable();
+  const { clearCustomFieldCaches, resolveCustomFields } = await loadCustomFields();
+  clearCustomFieldCaches();
+
+  const mockAgent = new MockAgent();
+  mockAgent.disableNetConnect();
+  setGlobalDispatcher(mockAgent);
+  mockAgent
+    .get("https://api.clickup.com")
+    .intercept({ path: "/api/v2/list/listNum/field", method: "GET" })
+    .reply(200, {
+      fields: [
+        { id: "n1", name: "Points", type: "number", type_config: {} },
+        { id: "n2", name: "Done", type: "manual_progress", type_config: {} },
+      ],
+    });
+
+  const resolved = await resolveCustomFields("listNum", [
+    { name: "Points", value: "5" },
+    { name: "Done", value: 40 },
+  ]);
+  assert.deepEqual(resolved.map((field) => field.value), [5, { current: 40 }]);
+
+  await assert.rejects(
+    () => resolveCustomFields("listNum", [{ name: "Points", value: { add: ["123"] } }]),
+    /Field "Points" expects a number/
+  );
+  await assert.rejects(() => resolveCustomFields("listNum", [{ name: "Points", value: ["1"] }]), /expects a number/);
+
+  await mockAgent.close();
+  t.mock.timers.runAll();
+  t.mock.timers.reset();
+});
+
 test("updateTask keeps the custom-field result when the refresh fails", async (t) => {
   t.mock.timers.enable();
   const { clearCustomFieldCaches } = await loadCustomFields();
