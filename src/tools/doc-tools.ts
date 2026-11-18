@@ -343,11 +343,11 @@ export function registerDocumentToolsWrite(server: McpServer) {
       space_id: z
         .string()
         .optional()
-        .describe("Create NEW document in this space (mutually exclusive with list_id and doc_id)"),
+        .describe("Create NEW document in this space (mutually exclusive with folder_id, list_id and doc_id)"),
       list_id: z
         .string()
         .optional()
-        .describe("Create NEW document in this list (mutually exclusive with space_id and doc_id)"),
+        .describe("Create NEW document in this list (mutually exclusive with space_id, folder_id and doc_id)"),
       folder_id: z
         .string()
         .optional()
@@ -355,7 +355,7 @@ export function registerDocumentToolsWrite(server: McpServer) {
       doc_id: z
         .string()
         .optional()
-        .describe("Add page to EXISTING document with this ID (mutually exclusive with space_id and list_id)"),
+        .describe("Add page to EXISTING document with this ID (mutually exclusive with space_id, folder_id and list_id)"),
       parent_page_id: z
         .string()
         .optional()
