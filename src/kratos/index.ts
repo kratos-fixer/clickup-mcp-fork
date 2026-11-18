@@ -2,6 +2,8 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { registerListByStatusTool } from "./list-by-status";
 import { LIST_TASKS_BY_STATUS_TOOL } from "./settings";
 
+export { taskAttachmentsBlock } from "./attachments";
+
 export const KRATOS_TOOLS = [LIST_TASKS_BY_STATUS_TOOL] as const;
 
 export function registerKratosToolsRead(server: McpServer) {

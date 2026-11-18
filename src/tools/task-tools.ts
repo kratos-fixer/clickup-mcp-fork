@@ -9,6 +9,7 @@ import { downloadImages } from "../shared/image-processing";
 import { ExistingComment, fetchAllTopLevelComments, fetchRepliesByComment } from "../shared/comments";
 import { formatCustomFieldReadValue } from "../shared/custom-fields";
 import { describeCustomItem } from "../shared/task-types";
+import { taskAttachmentsBlock } from "../kratos";
 
 // Read-specific utility functions
 
@@ -109,7 +110,7 @@ async function loadTaskContent(taskId: string): Promise<(ContentBlock | ImageMet
   );
   const task = await response.json();
 
-  const [taskMetadata, content] = await Promise.all([
+  const [taskMetadata, content, attachmentsBlock] = await Promise.all([
     // Create the task metadata block using the helper functions
     (async () => {
       const timeEntries = await fetchTaskTimeEntries(task.id);
@@ -120,9 +121,10 @@ async function loadTaskContent(taskId: string): Promise<(ContentBlock | ImageMet
       task.markdown_description || "",
       task.attachments || []
     ),
+    taskAttachmentsBlock(task.id, task.attachments),
   ]);
 
-  return [taskMetadata, ...content];
+  return [taskMetadata, ...content, attachmentsBlock];
 }
 
 async function loadTaskComments(id: string): Promise<DatedContentEvent[]> {
