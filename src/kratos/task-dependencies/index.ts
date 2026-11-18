@@ -1,9 +1,9 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { CLICKUP_V2_BASE, clickupDelete, clickupPost, toolError, toolText } from "./clickup-api";
+import { CLICKUP_V2_BASE, clickupDelete, clickupPost, toolError, toolText } from "../clickup-api";
+import { ADD_TASK_DEPENDENCY_TOOL, DELETE_TASK_DEPENDENCY_TOOL } from "./settings";
 
-export const ADD_TASK_DEPENDENCY_TOOL = "addTaskDependency";
-export const DELETE_TASK_DEPENDENCY_TOOL = "deleteTaskDependency";
+export { ADD_TASK_DEPENDENCY_TOOL, DELETE_TASK_DEPENDENCY_TOOL };
 
 export type DependencyDirection = "waits_on" | "blocks";
 
