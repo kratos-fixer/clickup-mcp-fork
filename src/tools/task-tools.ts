@@ -32,8 +32,8 @@ export function registerTaskToolsRead(server: McpServer, userData: any) {
       const id = await resolveTaskId(requestedId);
 
       // 1. Load base task content, comment events, and status change events in parallel
-      const [taskDetailContentBlocks, commentEvents, statusChangeEvents] = await Promise.all([
-        loadTaskContent(id), // Returns Promise<ContentBlock[]>
+      const [{ blocks: taskDetailContentBlocks, extraBlocks }, commentEvents, statusChangeEvents] = await Promise.all([
+        loadTaskContent(id),
         loadTaskComments(id), // Returns Promise<DatedContentEvent[]>
         loadTimeInStatusHistory(id), // Returns Promise<DatedContentEvent[]>
       ]);
@@ -54,8 +54,8 @@ export function registerTaskToolsRead(server: McpServer, userData: any) {
         processedEventBlocks.push(...event.contentBlocks);
       }
 
-      // 5. Combine task details with processed event blocks
-      const allContentBlocks: (ContentBlock | ImageMetadataBlock)[] = [...taskDetailContentBlocks, ...processedEventBlocks];
+      // 5. Combine task details with processed event blocks; extension blocks close the response
+      const allContentBlocks: (ContentBlock | ImageMetadataBlock)[] = [...taskDetailContentBlocks, ...processedEventBlocks, ...extraBlocks];
 
       // 6. Download images with smart size limiting
       const limitedContent: ContentBlock[] = await downloadImages(allContentBlocks);
@@ -110,7 +110,9 @@ export function addTaskContentExtension(extension: TaskContentExtension) {
   taskContentExtensions.push(extension);
 }
 
-async function loadTaskContent(taskId: string): Promise<(ContentBlock | ImageMetadataBlock)[]> {
+async function loadTaskContent(
+  taskId: string
+): Promise<{ blocks: (ContentBlock | ImageMetadataBlock)[]; extraBlocks: ContentBlock[] }> {
   const response = await fetch(
     `https://api.clickup.com/api/v2/task/${taskId}?include_markdown_description=true&include_subtasks=true`,
     { headers: { Authorization: CONFIG.apiKey } }
@@ -131,7 +133,7 @@ async function loadTaskContent(taskId: string): Promise<(ContentBlock | ImageMet
     Promise.all(taskContentExtensions.map((extend) => extend(task))),
   ]);
 
-  return [taskMetadata, ...content, ...extraBlocks];
+  return { blocks: [taskMetadata, ...content], extraBlocks };
 }
 
 async function loadTaskComments(id: string): Promise<DatedContentEvent[]> {
