@@ -37,37 +37,10 @@ export function countCode(files: FileChange[], seams: Set<string>): number {
   }, 0);
 }
 
-function prFiles(pr: string): { files: FileChange[]; range: string } {
-  const rows = execFileSync(
-    "gh",
-    ["api", "--paginate", `repos/{owner}/{repo}/pulls/${pr}/files`, "--jq", ".[] | {filename, additions, deletions}"],
-    { encoding: "utf8" }
-  );
-  const files = lines(rows).map((row) => {
-    const file = JSON.parse(row) as { filename: string; additions: number; deletions: number };
-    return { path: file.filename, additions: file.additions, deletions: file.deletions };
-  });
-  const range = execFileSync(
-    "gh",
-    ["pr", "view", pr, "--json", "baseRefOid,headRefOid", "--jq", '[.baseRefOid,.headRefOid] | join("...")'],
-    { encoding: "utf8" }
-  ).trim();
-  return { files, range };
-}
-
 function main(): void {
-  const target = process.argv[2];
-  if (!target) throw new Error("usage: bun .github/scripts/pr-size.ts <PR> | --range <base>...<head>");
-  let files: FileChange[];
-  let range: string;
-  if (target === "--range") {
-    range = process.argv[3];
-    if (!range?.includes("...")) throw new Error("expected <base>...<head>");
-    files = parseNumstat(git("diff", "--numstat", range));
-  } else {
-    if (!/^[1-9]\d*$/.test(target)) throw new Error("expected PR number");
-    ({ files, range } = prFiles(target));
-  }
+  const [flag, range] = process.argv.slice(2);
+  if (flag !== "--range" || !range?.includes("...")) throw new Error("usage: bun .github/scripts/pr-size.ts --range <base>...<head>");
+  const files = parseNumstat(git("diff", "--numstat", range));
   const code = countCode(files, seamPaths(git("diff", range, "--", LEDGER_FILE)));
   console.log(`code ${code} / limit ${CODE_LINES_PER_PR_LIMIT}${code > CODE_LINES_PER_PR_LIMIT ? " over" : ""}`);
   if (code > CODE_LINES_PER_PR_LIMIT) process.exitCode = 1;
