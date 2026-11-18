@@ -90,3 +90,77 @@ test("getTaskById prints the Attachments block, an image missing from the descri
   assert.match(block.text, /story-times\.csv \(csv, 1 KB, .*\(attachment_id: att-csv\)/);
   await agent.close();
 });
+
+// Fixture follows the task `attachments` item of https://developer.clickup.com/reference/gettask;
+// a comment carries the same object in a `type: "attachment"` fragment (https://developer.clickup.com/reference/gettaskcomments).
+test("getTaskById lists a file attached through a comment in the Attachments block", async (t) => {
+  t.mock.timers.enable();
+  const { addTaskContentExtension, registerTaskToolsRead } = await import("../../../tools/task-tools");
+  const { taskAttachmentsBlock } = await import("../index");
+  addTaskContentExtension((task) => taskAttachmentsBlock(task.id, task.attachments));
+  const commentFile = {
+    id: "att-comment.csv",
+    date: 1763460000000,
+    title: "probe.csv",
+    type: 1,
+    source: 1,
+    version: 0,
+    extension: "csv",
+    thumbnail_small: null,
+    thumbnail_large: null,
+    is_folder: null,
+    mimetype: "text/csv",
+    hidden: false,
+    parent_id: "task2",
+    size: 3072,
+    total_comments: 0,
+    resolved_comments: 0,
+    user: { id: 1, username: "creator", email: "creator@example.com", initials: "C", profilePicture: null },
+    deleted: false,
+    orientation: null,
+    url: "https://t1.clickup-attachments.com/att-comment/probe.csv",
+  };
+  const agent = new MockAgent();
+  agent.disableNetConnect();
+  setGlobalDispatcher(agent);
+  const client = agent.get("https://api.clickup.com");
+  client.intercept({ path: "/api/v2/team", method: "GET" }).reply(200, { teams: [{ id: "team1", members: [] }] });
+  client.intercept({ path: /\/api\/v2\/task\/task2\?.*/, method: "GET" }).reply(200, {
+    id: "task2",
+    name: "Task with a comment file",
+    markdown_description: "",
+    attachments: [commentFile],
+    creator: { username: "creator", id: "1" },
+    assignees: [],
+    list: { id: "list1", name: "List" },
+    space: { id: "space1", name: "Space" },
+    status: { status: "open", type: "open" },
+    url: "https://app.clickup.com/t/task2",
+    date_created: "0",
+    date_updated: "0",
+  });
+  client.intercept({ path: /\/api\/v2\/task\/task2\/comment.*/, method: "GET" }).reply(200, {
+    comments: [
+      {
+        id: "c1",
+        comment: [{ text: "see file", type: "text" }, { type: "attachment", text: "probe.csv", attachment: commentFile }],
+        comment_text: "see file probe.csv",
+        user: { id: 1, username: "creator" },
+        date: "1763460000000",
+        reactions: [],
+      },
+    ],
+  });
+  client.intercept({ path: "/api/v2/task/task2/time_in_status", method: "GET" }).reply(200, { status_history: [], current_status: null });
+  client.intercept({ path: /\/api\/v2\/team\/team1\/time_entries.*/, method: "GET" }).reply(200, { data: [] });
+
+  const tools: Record<string, any> = {};
+  registerTaskToolsRead({ tool: (name: string, ...rest: any[]) => (tools[name] = rest[rest.length - 1]) } as any, {
+    user: { username: "me", id: "u1" },
+  });
+  const result = await tools.getTaskById({ id: "task2" });
+  const block = result.content.find((item: any) => typeof item.text === "string" && item.text.startsWith("Attachments ("));
+  assert.ok(block, "Attachments block missing");
+  assert.match(block.text, /^Attachments \(1\):\n- probe\.csv \(csv, 3 KB, .*\) https:\/\/t1\.clickup-attachments\.com\/att-comment\/probe\.csv \(attachment_id: att-comment\.csv\)$/);
+  await agent.close();
+});
