@@ -15,12 +15,19 @@ export function scanDiff(diff: string): Map<string, Set<number>> {
   const added = new Map<string, Set<number>>();
   let file = "";
   let line = 0;
+  // An added `++x;` reads `+++x;` in a hunk, so `+++ ` is a header only before the first hunk.
+  let header = false;
   for (const row of diff.split("\n")) {
-    if (row.startsWith("diff --git ")) file = "";
-    else if (row.startsWith("+++ ")) {
+    if (row.startsWith("diff --git ")) {
+      file = "";
+      header = true;
+    } else if (header && row.startsWith("+++ ")) {
       const path = row.slice(4).replace(/^b\//, "");
       file = scansPath(path) ? path : "";
-    } else if (row.startsWith("@@ ")) line = Number(/\+(\d+)/.exec(row)?.[1] ?? 0);
+    } else if (row.startsWith("@@ ")) {
+      header = false;
+      line = Number(/\+(\d+)/.exec(row)?.[1] ?? 0);
+    }
     else if (file && row.startsWith("+")) {
       if (!added.has(file)) added.set(file, new Set());
       added.get(file)!.add(line++);

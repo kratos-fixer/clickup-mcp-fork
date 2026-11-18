@@ -21,7 +21,7 @@ export function failedTitles(output: string, file: string): Failure[] {
     const match = /^\s*not ok \d+ - (.+?)(?: \{.*)?$/.exec(line);
     if (!match) continue;
     const title = match[1].trim();
-    if (title === file || file.endsWith(`/${title}`)) {
+    if (title === file || title.endsWith(`/${file}`) || file.endsWith(`/${title}`)) {
       if (!failures.length) failures.push({ file, title: "(whole file)" });
     } else failures.push({ file, title });
   }

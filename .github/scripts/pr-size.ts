@@ -7,8 +7,14 @@ const git = (...args: string[]) => execFileSync("git", args, { encoding: "utf8" 
 export function parseNumstat(text: string): FileChange[] {
   return lines(text).map((row) => {
     const [added, deleted, path] = row.split("\t");
-    return { path, additions: Number(added) || 0, deletions: Number(deleted) || 0 };
+    return { path: renameTarget(path), additions: Number(added) || 0, deletions: Number(deleted) || 0 };
   });
+}
+
+// numstat writes a rename as `src/{a => b}/x.ts` or `old => new`; ownership is decided by the new path.
+export function renameTarget(path: string): string {
+  if (/\{[^{}]* => [^{}]*\}/.test(path)) return path.replace(/\{[^{}]* => ([^{}]*)\}/, "$1").replace(/\/{2,}/g, "/");
+  return path.includes(" => ") ? path.split(" => ")[1] : path;
 }
 
 function lines(text: string): string[] {

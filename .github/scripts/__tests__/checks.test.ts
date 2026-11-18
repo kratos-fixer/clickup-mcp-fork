@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { isOurPath } from "../settings.ts";
 import { scanDiff, scanSource } from "../comment-length/index.ts";
 import { checkFile } from "../file-size.ts";
-import { countCode, seamPaths } from "../pr-size.ts";
+import { countCode, parseNumstat, seamPaths } from "../pr-size.ts";
 import { expectedFailures, failedTitles, matchesTestGlob, unexpectedFailures } from "../upstream-tests.ts";
 
 describe("isOurPath", () => {
@@ -55,6 +55,11 @@ describe("PR size", () => {
     const ledger = "-| P3 | `src/index.ts:12` | register | contract | seam | None |";
     expect(countCode(files, seamPaths(ledger))).toBe(4);
   });
+  test("a rename into our directory counts by its new path", () => {
+    const renamed = parseNumstat("3\t1\tsrc/{tools => kratos}/a.ts\n2\t0\told.ts => src/kratos/b.ts\n");
+    expect(renamed.map((file) => file.path)).toEqual(["src/kratos/a.ts", "src/kratos/b.ts"]);
+    expect(countCode(renamed, new Set())).toBe(6);
+  });
 });
 
 describe("expected upstream failures", () => {
@@ -87,6 +92,9 @@ describe("TAP parsing", () => {
   test("a file-level failure is one (whole file) entry", () => {
     expect(failedTitles(`not ok 1 - ${file}\n`, file)).toEqual([{ file, title: "(whole file)" }]);
   });
+  test("an absolute file-level failure is one (whole file) entry", () => {
+    expect(failedTitles(`not ok 1 - /home/runner/work/repo/${file}\n`, file)).toEqual([{ file, title: "(whole file)" }]);
+  });
 });
 
 describe("comment length", () => {
@@ -95,6 +103,10 @@ describe("comment length", () => {
   test("catches an added four-line block in our code", () => {
     const diff = `diff --git a/${file} b/${file}\n+++ b/${file}\n@@ -0,0 +1,4 @@\n+// one\n+// two\n+// three\n+// four\n`;
     expect(scanSource(file, source, scanDiff(diff).get(file))).toEqual([{ file, line: 1, length: 4 }]);
+  });
+  test("an added `++x;` line does not end the file's hunk", () => {
+    const diff = `diff --git a/${file} b/${file}\n+++ b/${file}\n@@ -0,0 +1,2 @@\n+++ count;\n+// one\n`;
+    expect([...(scanDiff(diff).get(file) ?? [])]).toEqual([1, 2]);
   });
   test("three lines pass, upstream files are skipped", () => {
     expect(scanSource(file, "// one\n// two\n// three\n")).toEqual([]);
