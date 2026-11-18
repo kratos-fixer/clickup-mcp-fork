@@ -226,6 +226,37 @@ describe("getDocumentPages", () => {
     }
   });
 
+  test("a page larger than maxResponseSizeMB is cut and read on with content_offset", async () => {
+    const { CONFIG } = await import("../../../shared/config");
+    const previous = CONFIG.maxResponseSizeMB;
+    CONFIG.maxResponseSizeMB = 0.001;
+    try {
+      const huge = "é".repeat(400) + "y".repeat(400);
+      const doc = [
+        { id: "a", name: "A", content: huge },
+        { id: "b", name: "B", content: "small" },
+      ];
+      mockDocs(200, doc);
+      const first = (await tools.getDocumentPages.handler({ doc_id: "doc1" })).content[0].text;
+      assert.ok(Buffer.byteLength(first, "utf8") < 1200, first);
+      const next = first.match(/truncated: page a cut; continue with page_ids=\["a"\] content_offset=(\d+)/);
+      assert.ok(next, first);
+      assert.match(first, /truncated: 1 pages not shown \(page_ids: b\)/);
+      const offset = Number(next[1]);
+      const shown = first.split("\n\n")[1].split("\n")[0];
+      assert.equal(shown, huge.slice(0, offset));
+
+      mockDocs(200, doc);
+      const second = (
+        await tools.getDocumentPages.handler({ doc_id: "doc1", page_ids: ["a"], content_offset: offset })
+      ).content[0].text;
+      assert.ok(second.includes(huge.slice(offset)), second);
+      assert.doesNotMatch(second, /truncated/);
+    } finally {
+      CONFIG.maxResponseSizeMB = previous;
+    }
+  });
+
   test("a 404 returns the clickup-api error text", async () => {
     mockDocs(404, { err: "Doc not found", ECODE: "DOC_001" });
     const result = await tools.getDocumentPages.handler({ doc_id: "doc1" });
