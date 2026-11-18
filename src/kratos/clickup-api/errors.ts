@@ -63,10 +63,11 @@ export class ClickUpApiError extends Error {
 
   constructor(init: ClickUpApiErrorInit) {
     const detail = withoutToken(init.detail);
-    super(buildMessage(init, detail));
+    const ecode = init.ecode === undefined ? undefined : withoutToken(init.ecode);
+    super(buildMessage({ ...init, ecode }, detail));
     this.kind = init.kind;
     this.status = init.status;
-    this.ecode = init.ecode;
+    this.ecode = ecode;
     this.detail = detail;
     this.method = init.method;
     this.path = init.path;

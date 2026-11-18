@@ -287,6 +287,19 @@ describe("the token never reaches a message", () => {
     assert.equal(error.message.includes("test-key"), false);
   });
 
+  test("ClickUpApiError redacts the token from ecode", async () => {
+    agent.get(ORIGIN).intercept({ path: "/api/v2/task/t1", method: "GET" }).reply(400, { err: "bad", ECODE: "test-key" });
+    const error = await rejection(api.clickupGet(`${api.CLICKUP_V2_BASE}/task/t1`));
+    assert.equal(error.ecode, "[redacted]");
+    assert.equal(error.message.includes("test-key"), false, error.message);
+  });
+
+  test("toolError redacts the token from the action text", (t) => {
+    t.mock.method(console, "error", () => {});
+    const text = String(api.toolError("reading test-key", new Error("boom")).content[0].text);
+    assert.equal(text, "Error reading [redacted]: boom");
+  });
+
   test("toolError strips the token from a foreign error", (t) => {
     t.mock.method(console, "error", () => {});
     const text = String(api.toolError("reading task", new Error("header test-key leaked")).content[0].text);

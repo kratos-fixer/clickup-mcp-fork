@@ -10,5 +10,5 @@ export function toolError(action: string, error: unknown): CallToolResult {
   const logged = error instanceof Error ? (error.stack ?? message) : message;
   // Errors from outside this module reach the model and stderr too, so the token is stripped here as well.
   console.error(withoutToken("Error " + action + ": " + logged));
-  return { content: [{ type: "text", text: "Error " + action + ": " + withoutToken(message) }], isError: true };
+  return { content: [{ type: "text", text: withoutToken("Error " + action + ": " + message) }], isError: true };
 }
