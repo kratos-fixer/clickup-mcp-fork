@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { CLICKUP_V2_BASE, clickupDelete, clickupPost, toolError, toolText } from "../clickup-api";
+import { TASK_ID_FORMAT_HINT, resolveTaskId, taskIdSchema } from "../../shared/task-ids";
 import { ADD_TASK_DEPENDENCY_TOOL, DELETE_TASK_DEPENDENCY_TOOL } from "./settings";
 
 export { ADD_TASK_DEPENDENCY_TOOL, DELETE_TASK_DEPENDENCY_TOOL };
@@ -29,21 +30,27 @@ function resultLine(waiting: string, blocking: string, outcome: "added" | "remov
   return `task ${waiting} waits on ${blocking}: ${outcome} (${urls})`;
 }
 
+// The dependency endpoint takes generated IDs only, so custom IDs are looked up first.
+async function resolvedPair(input: DependencyInput) {
+  const [task_id, other_task_id] = await Promise.all([resolveTaskId(input.task_id), resolveTaskId(input.other_task_id)]);
+  return dependencyPair({ task_id, other_task_id, direction: input.direction });
+}
+
 export async function addTaskDependency(input: DependencyInput): Promise<string> {
-  const { waiting, blocking } = dependencyPair(input);
+  const { waiting, blocking } = await resolvedPair(input);
   await clickupPost(dependencyUrl(waiting), { depends_on: blocking });
   return resultLine(waiting, blocking, "added");
 }
 
 export async function deleteTaskDependency(input: DependencyInput): Promise<string> {
-  const { waiting, blocking } = dependencyPair(input);
+  const { waiting, blocking } = await resolvedPair(input);
   await clickupDelete(dependencyUrl(waiting), { depends_on: blocking });
   return resultLine(waiting, blocking, "removed");
 }
 
 const dependencySchema = {
-  task_id: z.string().min(1).describe("The task this call is about"),
-  other_task_id: z.string().min(1).describe("The task on the other side of the dependency"),
+  task_id: taskIdSchema(`The task this call is about: ${TASK_ID_FORMAT_HINT}`),
+  other_task_id: taskIdSchema(`The task on the other side of the dependency: ${TASK_ID_FORMAT_HINT}`),
   direction: z
     .enum(["waits_on", "blocks"])
     .describe("waits_on: task_id waits on other_task_id. blocks: task_id blocks other_task_id"),

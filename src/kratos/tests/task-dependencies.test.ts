@@ -95,3 +95,23 @@ test("a 400 reply is printed as an error and not retried", async (t) => {
   assert.equal(result.isError, true);
   assert.match(result.content[0].text, /^Error adding task dependency: .*HTTP 400 \(DEP_001\): Dependency would create a cycle/);
 });
+
+test("custom task IDs are resolved to generated IDs before the dependency call", async () => {
+  const lookups: string[] = [];
+  agent
+    .get("https://api.clickup.com")
+    .intercept({ path: (p: string) => p.startsWith("/api/v2/task/ENG-"), method: "GET" })
+    .reply((opts) => {
+      lookups.push(opts.path);
+      return { statusCode: 200, data: { id: opts.path.includes("ENG-1") ? "gen1" : "gen2" } };
+    })
+    .times(2);
+  const seen = capture("POST");
+  const result = await tools.addTaskDependency({ task_id: "ENG-1", other_task_id: "ENG-2", direction: "waits_on" });
+  assert.equal(lookups.length, 2);
+  assert.ok(lookups.every((p) => p.includes("custom_task_ids=true") && p.includes("team_id=team1")));
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0].path, "/api/v2/task/gen1/dependency");
+  assert.deepEqual(JSON.parse(String(seen[0].body)), { depends_on: "gen2" });
+  assert.match(result.content[0].text, /^task gen1 waits on gen2: added/);
+});
