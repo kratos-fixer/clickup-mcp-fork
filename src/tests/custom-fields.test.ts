@@ -288,6 +288,90 @@ test("formatCustomFieldReadValue resolves users, labels and drop_down names", as
   assert.equal(formatCustomFieldReadValue({ type: "short_text", value: "" }), null);
 });
 
+test("date fields send value_options.time and date-only reads keep the calendar day", async (t) => {
+  t.mock.timers.enable();
+  const { clearCustomFieldCaches, resolveCustomFields, buildCreateCustomFieldsBody, formatCustomFieldReadValue } =
+    await loadCustomFields();
+  clearCustomFieldCaches();
+
+  const mockAgent = new MockAgent();
+  mockAgent.disableNetConnect();
+  setGlobalDispatcher(mockAgent);
+  mockAgent
+    .get("https://api.clickup.com")
+    .intercept({ path: "/api/v2/list/listDate/field", method: "GET" })
+    .reply(200, { fields: [FIELDS[3], { id: "f9", name: "Due", type: "date", type_config: {} }] });
+
+  const resolved = await resolveCustomFields("listDate", [
+    { name: "Maintenance Window", value: "2026-11-18T15:30:00Z" },
+    { name: "Due", value: "2026-11-18" },
+  ]);
+  assert.deepEqual(buildCreateCustomFieldsBody(resolved), [
+    { id: "f4", value: Date.parse("2026-11-18T15:30:00Z"), value_options: { time: true } },
+    { id: "f9", value: Date.parse("2026-11-18"), value_options: { time: false } },
+  ]);
+
+  const dateOnly = new Date(2026, 10, 18, 4, 0, 0, 0).getTime();
+  assert.equal(formatCustomFieldReadValue({ type: "date", value: String(dateOnly) }), "2026-11-18");
+  assert.equal(
+    formatCustomFieldReadValue({ type: "date", value: Date.parse("2026-11-18T15:30:00Z") }),
+    "2026-11-18T15:30:00.000Z"
+  );
+
+  await mockAgent.close();
+  t.mock.timers.runAll();
+  t.mock.timers.reset();
+});
+
+test("updateTask leaves custom fields untouched when the task PUT fails", async (t) => {
+  t.mock.timers.enable();
+  const { clearCustomFieldCaches } = await loadCustomFields();
+  clearCustomFieldCaches();
+
+  const { registerTaskToolsWrite } = await import("../tools/task-write-tools");
+
+  const mockAgent = new MockAgent();
+  mockAgent.disableNetConnect();
+  setGlobalDispatcher(mockAgent);
+  const client = mockAgent.get("https://api.clickup.com");
+  client.intercept({ path: "/api/v2/user", method: "GET" }).reply(200, { user: { id: "u1", username: "me" } });
+  client.intercept({ path: "/api/v2/task/taskPut?include_markdown_description=true", method: "GET" }).reply(200, {
+    id: "taskPut",
+    name: "Acme",
+    status: { status: "open" },
+    assignees: [],
+    list: { id: "list123", name: "Customers" },
+    markdown_description: "",
+    tags: [],
+  });
+  client.intercept({ path: "/api/v2/list/list123/field", method: "GET" }).reply(200, { fields: FIELDS });
+  client.intercept({ path: "/api/v2/task/taskPut", method: "PUT" }).reply(400, { err: "Status not found" });
+  let fieldWrites = 0;
+  client
+    .intercept({ path: "/api/v2/task/taskPut/field/f2", method: "POST" })
+    .reply(() => {
+      fieldWrites++;
+      return { statusCode: 200, data: {} };
+    })
+    .persist();
+
+  const { tools, serverStub } = makeServerStub();
+  registerTaskToolsWrite(serverStub, { user: { username: "me", id: "u1" } });
+
+  const result = await tools.updateTask({
+    task_id: "taskPut",
+    status: "nope",
+    custom_fields: [{ name: "Domain", value: "Network" }],
+  });
+
+  assert.match(result.content[0].text, /Error updating task: 400/);
+  assert.equal(fieldWrites, 0);
+
+  await mockAgent.close();
+  t.mock.timers.runAll();
+  t.mock.timers.reset();
+});
+
 test("getListCustomFields tool lists fields, options and writability", async (t) => {
   t.mock.timers.enable();
   const { clearCustomFieldCaches } = await loadCustomFields();

@@ -61,6 +61,8 @@ export interface ResolvedCustomField {
   value: unknown;
   /** Human-readable rendering of the resolved value, for the tool response. */
   display: string;
+  /** Sent beside `value`; a date field needs `{ time: true }` to keep its time of day. */
+  valueOptions?: { time: boolean };
 }
 
 /** Field types this MCP can write. */
@@ -318,7 +320,7 @@ async function resolveUser(member: unknown, directory: TeamMember[]): Promise<st
 }
 
 /** Convert a friendly value into the API-ready value for a field type. */
-async function coerceValue(field: ClickUpCustomField, raw: unknown): Promise<{ value: unknown; display: string }> {
+async function coerceValue(field: ClickUpCustomField, raw: unknown): Promise<{ value: unknown; display: string; valueOptions?: { time: boolean } }> {
   const type = field.type;
 
   if (READ_ONLY_TYPES.has(type)) {
@@ -401,7 +403,8 @@ async function coerceValue(field: ClickUpCustomField, raw: unknown): Promise<{ v
       if (!Number.isFinite(ms)) {
         throw new Error(`Field "${field.name}" needs a date as ISO string or epoch ms, got "${String(raw)}".`);
       }
-      return { value: ms, display: new Date(ms).toISOString() };
+      const hasTime = typeof raw === "number" ? ms % 86_400_000 !== 0 : /T\d{2}:\d{2}/.test(String(raw));
+      return { value: ms, display: new Date(ms).toISOString(), valueOptions: { time: hasTime } };
     }
     case "number":
     case "currency":
@@ -486,15 +489,19 @@ export async function resolveCustomFields(
       throw new Error(`Custom field "${field.name}" is set twice ("${previous}" and "${input.name ?? input.id}") - keep a single entry.`);
     }
     seen.set(field.id, input.name ?? input.id ?? field.name);
-    const { value, display } = await coerceValue(field, input.value);
-    resolved.push({ fieldId: field.id, fieldName: field.name, fieldType: field.type, value, display });
+    const { value, display, valueOptions } = await coerceValue(field, input.value);
+    resolved.push({ fieldId: field.id, fieldName: field.name, fieldType: field.type, value, display, ...(valueOptions ? { valueOptions } : {}) });
   }
   return resolved;
 }
 
 /** Build the `custom_fields` array for the create-task request body. */
-export function buildCreateCustomFieldsBody(resolved: ResolvedCustomField[]): Array<{ id: string; value: unknown }> {
-  return resolved.map((field) => ({ id: field.fieldId, value: field.value }));
+export function buildCreateCustomFieldsBody(resolved: ResolvedCustomField[]): Array<{ id: string; value: unknown; value_options?: { time: boolean } }> {
+  return resolved.map((field) => ({ id: field.fieldId, ...fieldValueBody(field) }));
+}
+
+function fieldValueBody(field: ResolvedCustomField): { value: unknown; value_options?: { time: boolean } } {
+  return field.valueOptions && field.value !== null ? { value: field.value, value_options: field.valueOptions } : { value: field.value };
 }
 
 export interface CustomFieldWriteResult {
@@ -522,7 +529,7 @@ export async function writeCustomFieldsToTask(
           Authorization: CONFIG.apiKey,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ value: field.value }),
+        body: JSON.stringify(fieldValueBody(field)),
       });
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -562,7 +569,13 @@ export function formatCustomFieldReadValue(field: any): string | null {
 
   if (field.type === "date") {
     const ms = Number(value);
-    return Number.isFinite(ms) ? new Date(ms).toISOString() : String(value);
+    if (!Number.isFinite(ms)) {
+      return String(value);
+    }
+    // ClickUp stores a date-only value as 04:00 local time; UTC would shift it a day east of UTC.
+    const local = new Date(ms);
+    const dateOnly = field.value_options?.time === false || (field.value_options?.time !== true && local.getHours() === 4 && local.getMinutes() === 0 && local.getSeconds() === 0 && local.getMilliseconds() === 0);
+    return dateOnly ? local.toLocaleDateString("en-CA") : local.toISOString();
   }
 
   if (field.type === "drop_down") {

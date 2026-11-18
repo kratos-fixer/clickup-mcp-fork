@@ -581,17 +581,6 @@ export function registerTaskToolsWrite(server: McpServer, userData: any) {
           }
         }
 
-        // Custom fields are written through their dedicated field endpoints, one
-        // call per field rather than the task PUT body, so a single failure does
-        // not roll back the others - the same approach as tags and dependencies.
-        let customFieldWritten: ResolvedCustomField[] = [];
-        let customFieldWarnings: string[] = [];
-        if (resolvedCustomFields.length > 0) {
-          const result = await writeCustomFieldsToTask(task_id, resolvedCustomFields);
-          customFieldWritten = result.written;
-          customFieldWarnings = result.warnings;
-        }
-
         // Build the description to write: a full replacement, or the existing
         // text plus a dated append section.
         let finalDescription: string | undefined;
@@ -650,6 +639,16 @@ export function registerTaskToolsWrite(server: McpServer, userData: any) {
           }
 
           updatedTask = await updateResponse.json();
+        }
+
+        // One call per field endpoint, so a single failure does not roll back the others;
+        // written after the task PUT so a rejected PUT leaves the fields untouched.
+        let customFieldWritten: ResolvedCustomField[] = [];
+        let customFieldWarnings: string[] = [];
+        if (resolvedCustomFields.length > 0) {
+          const result = await writeCustomFieldsToTask(task_id, resolvedCustomFields);
+          customFieldWritten = result.written;
+          customFieldWarnings = result.warnings;
         }
 
         // If only tags, dependencies or custom fields were updated, fetch the task
