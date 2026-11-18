@@ -12,33 +12,59 @@ export const isScanned = (path: string) => path.startsWith("src/") && /\.tsx?$/.
 export const isTest = (path: string) => /(?:^|\/)(?:tests|__tests__)\//.test(path) || /\.(?:test|spec)\.tsx?$/.test(path);
 const inKratos = (key: string) => key === KRATOS_ROOT || key.startsWith(`${KRATOS_ROOT}/`);
 
-// Blanks comments and template literals and swaps each quoted string for its index, so prose and code samples never look like imports.
+// Blanks comments and template text and swaps each quoted string for its index, so prose and code samples never look like imports.
 function maskSource(source: string): { code: string; strings: string[] } {
   const strings: string[] = [];
-  let code = "";
   let i = 0;
   const blank = (text: string) => text.replace(/[^\n]/g, " ");
-  while (i < source.length) {
-    const ch = source[i];
-    const next = source[i + 1];
-    let end = i + 1;
-    if (ch === "/" && next === "/") {
-      end = source.indexOf("\n", i);
-      if (end === -1) end = source.length;
-      code += blank(source.slice(i, end));
-    } else if (ch === "/" && next === "*") {
-      end = source.indexOf("*/", i + 2);
-      end = end === -1 ? source.length : end + 2;
-      code += blank(source.slice(i, end));
-    } else if (ch === "\"" || ch === "'" || ch === "`") {
-      while (end < source.length && source[end] !== ch) end += source[end] === "\\" ? 2 : 1;
-      end = Math.min(end + 1, source.length);
-      if (ch === "`") code += blank(source.slice(i, end));
-      else code += `"${strings.push(source.slice(i + 1, end - 1)) - 1}"` + "\n".repeat(source.slice(i, end).split("\n").length - 1);
-    } else code += ch;
-    i = end;
-  }
-  return { code, strings };
+  // Template substitutions are code, so they are scanned like the rest of the file up to their closing brace.
+  const scan = (inSubstitution: boolean): string => {
+    let code = "";
+    let depth = 0;
+    while (i < source.length) {
+      const ch = source[i];
+      const next = source[i + 1];
+      let end = i + 1;
+      if (ch === "/" && next === "/") {
+        end = source.indexOf("\n", i);
+        if (end === -1) end = source.length;
+        code += blank(source.slice(i, end));
+      } else if (ch === "/" && next === "*") {
+        end = source.indexOf("*/", i + 2);
+        end = end === -1 ? source.length : end + 2;
+        code += blank(source.slice(i, end));
+      } else if (ch === "`") {
+        code += " ";
+        i += 1;
+        while (i < source.length && source[i] !== "`") {
+          if (source[i] === "$" && source[i + 1] === "{") {
+            i += 2;
+            code += "  " + scan(true);
+          } else {
+            const step = source[i] === "\\" ? 2 : 1;
+            code += blank(source.slice(i, i + step));
+            i += step;
+          }
+        }
+        end = Math.min(i + 1, source.length);
+        code += end > i ? " " : "";
+      } else if (ch === "\"" || ch === "'") {
+        while (end < source.length && source[end] !== ch) end += source[end] === "\\" ? 2 : 1;
+        end = Math.min(end + 1, source.length);
+        code += `"${strings.push(source.slice(i + 1, end - 1)) - 1}"` + "\n".repeat(source.slice(i, end).split("\n").length - 1);
+      } else if (inSubstitution && ch === "}" && depth === 0) {
+        i = end;
+        return `${code} `;
+      } else {
+        if (inSubstitution && ch === "{") depth += 1;
+        if (inSubstitution && ch === "}") depth -= 1;
+        code += ch;
+      }
+      i = end;
+    }
+    return code;
+  };
+  return { code: scan(false), strings };
 }
 
 export function importSpecifiers(source: string): string[] {

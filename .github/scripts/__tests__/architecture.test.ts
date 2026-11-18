@@ -29,6 +29,11 @@ describe("import specifiers", () => {
     expect(importSpecifiers(source)).toEqual(["./real"]);
     expect(scanFile("src/kratos/a/x.ts", source)).toEqual([]);
   });
+
+  test("reads imports inside template substitutions but not the template text", () => {
+    const source = 'const v = `import("../x") ${await import("../b")} ${ { k: `${require("./c")}` }.k } end`;\nimport "./d";';
+    expect(importSpecifiers(source)).toEqual(["../b", "./c", "./d"]);
+  });
 });
 
 describe("upstream edges", () => {
