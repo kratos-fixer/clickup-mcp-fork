@@ -16,6 +16,19 @@ describe("import specifiers", () => {
     ].join("\n");
     expect(importSpecifiers(source)).toEqual(["./a", "../b", "./c", "./d", "./e", "./f", "zod"]);
   });
+
+  test("ignores import-like text in comments and string or template literals", () => {
+    const source = [
+      '// import { x } from "../b";',
+      '/* export { y } from "../c"; */',
+      "const sample = 'import { x } from \"../b\"';",
+      'const doc = `import("../d")`;',
+      'const quoted = "it\'s \\"import \\"../e\\"\\"";',
+      'import { real } from "./real";',
+    ].join("\n");
+    expect(importSpecifiers(source)).toEqual(["./real"]);
+    expect(scanFile("src/kratos/a/x.ts", source)).toEqual([]);
+  });
 });
 
 describe("upstream edges", () => {

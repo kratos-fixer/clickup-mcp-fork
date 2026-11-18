@@ -12,8 +12,38 @@ export const isScanned = (path: string) => path.startsWith("src/") && /\.tsx?$/.
 export const isTest = (path: string) => /(?:^|\/)(?:tests|__tests__)\//.test(path) || /\.(?:test|spec)\.tsx?$/.test(path);
 const inKratos = (key: string) => key === KRATOS_ROOT || key.startsWith(`${KRATOS_ROOT}/`);
 
+// Blanks comments and template literals and swaps each quoted string for its index, so prose and code samples never look like imports.
+function maskSource(source: string): { code: string; strings: string[] } {
+  const strings: string[] = [];
+  let code = "";
+  let i = 0;
+  const blank = (text: string) => text.replace(/[^\n]/g, " ");
+  while (i < source.length) {
+    const ch = source[i];
+    const next = source[i + 1];
+    let end = i + 1;
+    if (ch === "/" && next === "/") {
+      end = source.indexOf("\n", i);
+      if (end === -1) end = source.length;
+      code += blank(source.slice(i, end));
+    } else if (ch === "/" && next === "*") {
+      end = source.indexOf("*/", i + 2);
+      end = end === -1 ? source.length : end + 2;
+      code += blank(source.slice(i, end));
+    } else if (ch === "\"" || ch === "'" || ch === "`") {
+      while (end < source.length && source[end] !== ch) end += source[end] === "\\" ? 2 : 1;
+      end = Math.min(end + 1, source.length);
+      if (ch === "`") code += blank(source.slice(i, end));
+      else code += `"${strings.push(source.slice(i + 1, end - 1)) - 1}"` + "\n".repeat(source.slice(i, end).split("\n").length - 1);
+    } else code += ch;
+    i = end;
+  }
+  return { code, strings };
+}
+
 export function importSpecifiers(source: string): string[] {
-  return [...source.matchAll(IMPORT)].map((match) => match[1] ?? match[2] ?? match[3]);
+  const { code, strings } = maskSource(source);
+  return [...code.matchAll(IMPORT)].map((match) => strings[Number(match[1] ?? match[2] ?? match[3])]);
 }
 
 // Repo path of a relative import without its extension; packages resolve to undefined.
