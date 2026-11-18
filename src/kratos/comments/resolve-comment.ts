@@ -19,7 +19,7 @@ export function registerResolveComment(server: McpServer) {
         await clickupPut(`${CLICKUP_V2_BASE}/comment/${encodeURIComponent(comment_id)}`, { resolved: state });
         return toolText([state ? "Comment resolved." : "Comment reopened.", `comment_id: ${comment_id}`, `resolved: ${state}`]);
       } catch (error) {
-        return toolError("resolving comment", error);
+        return toolError(state ? "resolving comment" : "reopening comment", error);
       }
     }
   );

@@ -69,6 +69,13 @@ test("resolveComment on an unknown id returns the not_found hint as an error", a
   assert.match(result.content[0].text, /ClickUp has no item with this id/);
 });
 
+test("resolveComment failing to reopen names the reopen action in the error", async () => {
+  capturePut("missing", 404, { err: "Comment not found", ECODE: "COMM_001" });
+  const result = await writeTools().resolveComment({ comment_id: "missing", resolved: false });
+  assert.equal(result.isError, true);
+  assert.match(result.content[0].text, /^Error reopening comment: .*404/);
+});
+
 test("resolveComment is registered in write mode only", () => {
   const read: Handlers = {};
   kratos.registerKratosToolsRead(stubServer(read));
