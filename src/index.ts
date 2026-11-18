@@ -6,7 +6,7 @@ import { CONFIG } from "./shared/config";
 import {getCurrentUser, getSpaceSearchIndex} from "./shared/utils";
 
 // Import tool registration functions
-import { registerTaskToolsRead } from "./tools/task-tools";
+import { addTaskContentExtension, registerTaskToolsRead } from "./tools/task-tools";
 import { registerTaskToolsWrite } from "./tools/task-write-tools";
 import { registerSearchTools } from "./tools/search-tools";
 import { registerSpaceTools } from "./tools/space-tools";
@@ -14,7 +14,9 @@ import { registerListToolsRead, registerListToolsWrite } from "./tools/list-tool
 import { registerTimeToolsRead, registerTimeToolsWrite } from "./tools/time-tools";
 import { registerDocumentToolsRead, registerDocumentToolsWrite } from "./tools/doc-tools";
 import { registerSpaceResources } from "./resources/space-resources";
-import { registerKratosToolsRead, registerKratosToolsWrite } from "./kratos";
+import { registerKratosToolsRead, registerKratosToolsWrite, taskAttachmentsBlock } from "./kratos";
+
+addTaskContentExtension((task) => taskAttachmentsBlock(task.id, task.attachments));
 
 // Create server variable that will be initialized later
 let server: McpServer;

@@ -9,6 +9,7 @@ import { ADD_TASK_DEPENDENCY_TOOL, DELETE_TASK_DEPENDENCY_TOOL, registerTaskDepe
 import { registerTaskTemplatesRead, registerTaskTemplatesWrite } from "./task-templates";
 
 export { DOC_PARENT_TYPES } from "./docs";
+export { taskAttachmentsBlock } from "./attachments";
 
 export const KRATOS_TOOLS = [
   LIST_TASKS_BY_STATUS_TOOL,
