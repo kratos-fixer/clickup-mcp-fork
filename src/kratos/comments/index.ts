@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { RESOLVE_COMMENT_TOOL, registerResolveComment } from "./resolve-comment";
+import { registerResolveComment } from "./resolve-comment";
+import { RESOLVE_COMMENT_TOOL } from "./settings";
 
 export const COMMENT_TOOLS = [RESOLVE_COMMENT_TOOL] as const;
 

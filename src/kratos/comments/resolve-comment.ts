@@ -1,8 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { CLICKUP_V2_BASE, clickupPut, toolError, toolText } from "../clickup-api/index";
-
-export const RESOLVE_COMMENT_TOOL = "resolveComment";
+import { CLICKUP_V2_BASE, clickupPut, toolError, toolText } from "../clickup-api";
+import { RESOLVE_COMMENT_TOOL } from "./settings";
 
 export function registerResolveComment(server: McpServer) {
   server.tool(
