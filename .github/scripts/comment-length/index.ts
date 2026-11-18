@@ -1,14 +1,12 @@
-import { MAX_COMMENT_LINES, isOurPath } from "../settings.ts";
+import { CHECKED_SOURCE, HASH_COMMENT_SOURCE, MAX_COMMENT_LINES, isOurPath } from "../settings.ts";
 
 export type Violation = { file: string; line: number; length: number };
 type Range = { start: number; end: number; length: number };
 
-const SCANNED = /\.(?:ts|js|mjs|sh|yml)$/;
-
 export function scansPath(path: string): boolean {
   return (
     isOurPath(path) &&
-    SCANNED.test(path) &&
+    CHECKED_SOURCE.test(path) &&
     !path.split("/").some((part) => ["fixtures", "__fixtures__", "node_modules", "dist"].includes(part))
   );
 }
@@ -88,7 +86,7 @@ function ranges(source: string, hashComments: boolean): Range[] {
 
 export function scanSource(file: string, source: string, added?: Set<number>): Violation[] {
   if (!scansPath(file)) return [];
-  return ranges(source, /\.(?:sh|yml)$/.test(file))
+  return ranges(source, HASH_COMMENT_SOURCE.test(file))
     .filter(
       (range) =>
         range.length > MAX_COMMENT_LINES &&

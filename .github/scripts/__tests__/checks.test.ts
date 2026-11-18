@@ -107,6 +107,9 @@ describe("comment length", () => {
     expect(scanSource(".github/scripts/run.sh", "#!/bin/sh\n# one\n# two\n# three\n")).toEqual([]);
     expect(scanSource(".github/workflows/kratos.yml", "# a\n# b\n# c\n# d\n")).toHaveLength(1);
   });
+  test("yaml is scanned like yml", () => {
+    expect(scanSource(".github/workflows/kratos.yaml", "# a\n# b\n# c\n# d\n")).toHaveLength(1);
+  });
 });
 
 describe("file size", () => {
@@ -116,6 +119,7 @@ describe("file size", () => {
     expect(checkFile("src/kratos/ok.ts", "x\n".repeat(1000))).toEqual([]);
     expect(checkFile("src/tools/task-tools.ts", over)).toEqual([]);
     expect(checkFile("docs/dev/playbook.md", over)).toEqual([]);
+    expect(checkFile(".github/workflows/large.yaml", over)).toHaveLength(1);
   });
 });
 

@@ -21,6 +21,9 @@ export const OUR_TESTS_ROOT = "src/kratos";
 export const UPSTREAM_TEST_PRELOAD = "./src/tests/setup.ts";
 export const LEDGER_FILE = "UPSTREAM-PATCHES.md";
 
+export const CHECKED_SOURCE = /\.(?:ts|js|mjs|sh|ya?ml)$/;
+export const HASH_COMMENT_SOURCE = /\.(?:sh|ya?ml)$/;
+
 export function isOurPath(path: string): boolean {
   if ((UPSTREAM_OWNED_IN_OUR_PATHS as readonly string[]).includes(path)) return false;
   return OUR_PATHS.some((pattern) =>
