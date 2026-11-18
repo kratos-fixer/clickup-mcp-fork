@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Task templates.** `getTaskTemplates` lists the workspace's task templates (`template_id` and name) page by page, or finds one by name case-insensitively; `createTaskFromTemplate` creates a task in a list from a template given by `template_id` or `template_name`.
 - **All pages of a doc in one call.** `getDocumentPages` reads every page of a document, nested pages included, in the order the document shows them. `page_ids` limits it to some pages (unknown ids are listed with the ids that exist), `plain_text` returns plain text instead of Markdown. Output past `maxResponseSizeMB` ends with a `truncated` line naming the pages left out; a page larger than the limit is cut and read on with `content_offset`.
 - **Checklists.** `getTaskChecklists` lists a task's checklists with items, ids and resolved state, nested items included; `createChecklist`, `renameChecklist`, `deleteChecklist`, `createChecklistItem`, `editChecklistItem` and `deleteChecklistItem` change them. Task-taking tools accept Custom Task IDs.
+- **Upload a file to a task.** `uploadAttachment` attaches one file to a task without posting a comment: a local path, an image URL or a `data:` URI, with an optional `file_name`. Credential files, files over `MAX_UPLOAD_SIZE_MB`, non-image URLs and existing ClickUp attachment URLs are refused before anything is sent; the result prints `attachment_id`, `title` and `url`.
 
 ## [1.10.0] - 2026-11-02
 

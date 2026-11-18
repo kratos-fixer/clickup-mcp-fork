@@ -125,6 +125,10 @@
     {
       "name": "deleteChecklistItem",
       "description": "Delete one checklist item."
+    },
+    {
+      "name": "uploadAttachment",
+      "description": "Attach one file to a task without a comment, from a local path, an image URL or a data: URI. Prints the new attachment id, title and url."
     }
   ],
   "user_config": {
