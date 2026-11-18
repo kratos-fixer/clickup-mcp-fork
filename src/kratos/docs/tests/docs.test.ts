@@ -145,3 +145,94 @@ describe("searchDocuments", () => {
     assert.equal(limit.safeParse(100).success, true);
   });
 });
+
+describe("getDocumentPages", () => {
+  const PAGES_PATH = `${DOCS_PATH}/doc1/pages`;
+  const tree = [
+    {
+      id: "p1",
+      name: "Intro",
+      content: "# Intro text",
+      pages: [{ id: "p1a", name: "Child", content: "child text", pages: [{ id: "p1a1", name: "Grandchild", content: "deep" }] }],
+    },
+    { id: "p2", name: "Second", content: "second text" },
+  ];
+
+  test("sends max_page_depth -1 and text/md, prints nested pages depth first", async () => {
+    const paths = mockDocs(200, tree);
+    const result = await tools.getDocumentPages.handler({ doc_id: "doc1" });
+    assert.equal(paths.length, 1);
+    assert.ok(paths[0].startsWith(`${PAGES_PATH}?`));
+    const q = query(paths[0]);
+    assert.equal(q.get("max_page_depth"), "-1");
+    assert.equal(q.get("content_format"), "text/md");
+    const text = result.content[0].text;
+    assert.equal(result.isError, undefined);
+    const order = ["p1", "p1a", "p1a1", "p2"].map((id) => text.indexOf(`(page_id: ${id})`));
+    assert.ok(order.every((pos, i) => pos >= 0 && (i === 0 || pos > order[i - 1])), text);
+    assert.match(text, /## Intro \(page_id: p1\)\nurl: https:\/\/app\.clickup\.com\/team1\/v\/dc\/doc1\/p1\n\n# Intro text/);
+    assert.doesNotMatch(text, /truncated|not found/);
+  });
+
+  test("plain_text sends text/plain", async () => {
+    const paths = mockDocs(200, tree);
+    await tools.getDocumentPages.handler({ doc_id: "doc1", plain_text: true });
+    assert.equal(query(paths[0]).get("content_format"), "text/plain");
+  });
+
+  test("page_ids returns only those pages", async () => {
+    mockDocs(200, tree);
+    const result = await tools.getDocumentPages.handler({ doc_id: "doc1", page_ids: ["p1a1", "p2"] });
+    const text = result.content[0].text;
+    assert.match(text, /page_id: p1a1\)/);
+    assert.match(text, /page_id: p2\)/);
+    assert.doesNotMatch(text, /page_id: p1\)|page_id: p1a\)/);
+    assert.doesNotMatch(text, /not found/);
+  });
+
+  test("an unknown page id is listed under not found with the ids that exist", async () => {
+    mockDocs(200, tree);
+    const result = await tools.getDocumentPages.handler({ doc_id: "doc1", page_ids: ["p2", "nope"] });
+    const text = result.content[0].text;
+    assert.match(text, /^not found: nope\npages in this document: p1, p1a, p1a1, p2\n/);
+    assert.match(text, /page_id: p2\)/);
+  });
+
+  test("an empty doc says No pages", async () => {
+    mockDocs(200, []);
+    const result = await tools.getDocumentPages.handler({ doc_id: "doc1" });
+    assert.equal(result.content[0].text, "No pages in document doc1.");
+  });
+
+  test("content past maxResponseSizeMB is cut with a truncated line naming the ids", async () => {
+    const { CONFIG } = await import("../../../shared/config");
+    const previous = CONFIG.maxResponseSizeMB;
+    CONFIG.maxResponseSizeMB = 0.001;
+    try {
+      const big = "x".repeat(600);
+      mockDocs(200, [
+        { id: "a", name: "A", content: big },
+        { id: "b", name: "B", content: big },
+        { id: "c", name: "C", content: big },
+      ]);
+      const result = await tools.getDocumentPages.handler({ doc_id: "doc1" });
+      const text = result.content[0].text;
+      assert.match(text, /page_id: a\)/);
+      assert.doesNotMatch(text, /## B/);
+      const lines = text.split("\n");
+      assert.equal(lines[lines.length - 1], "truncated: 2 pages not shown (page_ids: b, c)");
+    } finally {
+      CONFIG.maxResponseSizeMB = previous;
+    }
+  });
+
+  test("a 404 returns the clickup-api error text", async () => {
+    mockDocs(404, { err: "Doc not found", ECODE: "DOC_001" });
+    const result = await tools.getDocumentPages.handler({ doc_id: "doc1" });
+    assert.equal(result.isError, true);
+    assert.match(
+      result.content[0].text,
+      /^Error reading document pages: ClickUp GET \/api\/v3\/workspaces\/team1\/docs\/doc1\/pages failed with HTTP 404/
+    );
+  });
+});
