@@ -500,7 +500,7 @@ export function registerTaskToolsWrite(server: McpServer, userData: any) {
         const resolvedCustomFields: ResolvedCustomField[] =
           custom_fields !== undefined ? await resolveCustomFields(taskData.list?.id, custom_fields) : [];
 
-                // Resolve and upload description images and files FIRST - a problem with them must
+        // Resolve and upload description images and files FIRST - a problem with them must
         // abort before dependencies, tags or the task itself are touched, so the
         // caller can fix the markdown and retry the whole call cleanly.
         // `description` replaces, `append_description` appends; both go through
@@ -706,7 +706,7 @@ export function registerTaskToolsWrite(server: McpServer, userData: any) {
           responseLines.push('custom_field_warnings: ' + customFieldWarnings.join('; '));
         }
 
-                responseLines.push(...formatAttachedFiles(uploadedAttachments));
+        responseLines.push(...formatAttachedFiles(uploadedAttachments));
 
         return {
           content: [
