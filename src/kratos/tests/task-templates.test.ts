@@ -95,6 +95,13 @@ test("getTaskTemplates with an empty first page says there are none", async () =
   await agent.close();
 });
 
+test("getTaskTemplates by name in an empty workspace says there are none", async () => {
+  const { agent } = mockClickUp([{ body: { templates: [] } }]);
+  const { getTaskTemplates } = await loadTools();
+  assert.equal((await getTaskTemplates({ name: "Bug" })).content[0].text, "No task templates.");
+  await agent.close();
+});
+
 test("getTaskTemplates by name stops after TEMPLATE_SEARCH_MAX_PAGES pages", async () => {
   const { TEMPLATE_SEARCH_MAX_PAGES } = await import("../task-templates/settings");
   const pages = Array.from({ length: TEMPLATE_SEARCH_MAX_PAGES }, (_, i) => ({ body: { templates: [template(`t${i}`, `T${i}`)] } }));

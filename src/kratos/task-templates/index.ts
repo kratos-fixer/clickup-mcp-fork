@@ -50,7 +50,7 @@ const formatTemplate = (t: TaskTemplate) => `- ${t.name} (template_id: ${t.id})`
 
 function notFoundText(name: string, seen: TaskTemplate[]): string[] {
   const head = `No task template named "${name}" in ${TEMPLATE_SEARCH_MAX_PAGES} pages at most.`;
-  return seen.length ? [head, "Templates seen:", ...seen.map(formatTemplate)] : [head, "No task templates."];
+  return seen.length ? [head, "Templates seen:", ...seen.map(formatTemplate)] : ["No task templates."];
 }
 
 export function registerTaskTemplatesRead(server: McpServer) {
