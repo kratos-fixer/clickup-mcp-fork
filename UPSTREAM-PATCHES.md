@@ -13,6 +13,6 @@ Ledger of every upstream file this fork changes. Upstream: `hauptsacheNet/clicku
 
 ## Expected upstream failures
 
-Measured MEASURE_PENDING.
+Measured 2026-11-18 on `main` = `v1.10.0` (`80bc6ba`), in the `kratos` CI job of https://github.com/kratos-fixer/clickup-mcp-fork/actions/runs/44217051069: `ubuntu-latest` (image `ubuntu-26.04`), Node `v20.20.2`, npm `10.8.2`. `bun .github/scripts/upstream-tests.ts` ran the 19 files `src/*/*.test.ts` matches: 88 tests, 88 pass. These tests fail on the untouched upstream tree; CI fails only on a test outside this list.
 
 None.
