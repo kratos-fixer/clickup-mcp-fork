@@ -148,7 +148,7 @@ test("createTask sends resolved custom_fields in the create body", async (t) => 
     bodyCaptured = JSON.parse(String(opts.body));
     return {
       statusCode: 200,
-      data: { id: "task999", name: "Acme", status: { status: "open" }, assignees: [{ id: "u1", username: "me" }], url: "https://app.clickup.com/t/task999" },
+      data: { id: "task999", name: "Acme", status: { status: "open" }, assignees: [{ id: "u1", username: "me" }], url: "https://app.clickup.com/t/task999", custom_fields: [{ id: "f1" }, { id: "f2" }] },
     };
   });
 
@@ -173,6 +173,8 @@ test("createTask sends resolved custom_fields in the create body", async (t) => 
   assert.match(result.content[0].text, /Task created successfully/);
   assert.match(result.content[0].text, /custom_fields:/);
   assert.match(result.content[0].text, /🧩 Domain: Infra/);
+  assert.match(result.content[0].text, /custom_field_warnings: not applied by ClickUp.*🙋 Requester \(field_id: f5\)/);
+  assert.doesNotMatch(result.content[0].text.split("custom_field_warnings")[0], /Requester/);
 
   await mockAgent.close();
   t.mock.timers.runAll();
@@ -487,14 +489,16 @@ test("numeric fields reject object values and manual progress is sent as { curre
       fields: [
         { id: "n1", name: "Points", type: "number", type_config: {} },
         { id: "n2", name: "Done", type: "manual_progress", type_config: {} },
+        { id: "n3", name: "Stars", type: "emoji", type_config: {} },
       ],
     });
 
   const resolved = await resolveCustomFields("listNum", [
     { name: "Points", value: "5" },
     { name: "Done", value: 40 },
+    { name: "Stars", value: 3 },
   ]);
-  assert.deepEqual(resolved.map((field) => field.value), [5, { current: 40 }]);
+  assert.deepEqual(resolved.map((field) => field.value), [5, { current: 40 }, 3]);
 
   await assert.rejects(
     () => resolveCustomFields("listNum", [{ name: "Points", value: { add: ["123"] } }]),

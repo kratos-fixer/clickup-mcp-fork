@@ -73,6 +73,7 @@ const WRITABLE_TYPES = new Set([
   "number",
   "currency",
   "rating",
+  "emoji",
   "manual_progress",
   "drop_down",
   "labels",
@@ -405,6 +406,7 @@ async function coerceValue(field: ClickUpCustomField, raw: unknown): Promise<{ v
     case "number":
     case "currency":
     case "rating":
+    case "emoji":
     case "manual_progress": {
       if (isBlank(raw)) {
         return { value: null, display: "(cleared)" };

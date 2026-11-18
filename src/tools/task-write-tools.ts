@@ -893,9 +893,22 @@ export function registerTaskToolsWrite(server: McpServer, userData: any) {
         if (tagCreateResults.length > 0) {
           responseLines.push('tag_warnings: ' + tagCreateResults.join('; '));
         }
-        if (resolvedCustomFields.length > 0) {
+        // ClickUp silently drops fields that do not apply to the created task's type,
+        // so only fields present on the returned task are reported as written.
+        const returnedFieldIds = Array.isArray(createdTask.custom_fields)
+          ? new Set(createdTask.custom_fields.map((field: { id: string }) => field.id))
+          : null;
+        const writtenFields = resolvedCustomFields.filter((field) => !returnedFieldIds || returnedFieldIds.has(field.fieldId));
+        const droppedFields = resolvedCustomFields.filter((field) => !writtenFields.includes(field));
+        if (writtenFields.length > 0) {
           responseLines.push('custom_fields:');
-          responseLines.push(...formatResolvedCustomFields(resolvedCustomFields));
+          responseLines.push(...formatResolvedCustomFields(writtenFields));
+        }
+        if (droppedFields.length > 0) {
+          responseLines.push(
+            'custom_field_warnings: not applied by ClickUp (field does not apply to this task type): ' +
+              droppedFields.map((field) => `${field.fieldName} (field_id: ${field.fieldId})`).join('; ')
+          );
         }
 
         return {
