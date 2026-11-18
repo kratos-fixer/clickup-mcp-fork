@@ -1,6 +1,167 @@
-# ClickUp MCP for AI Assistants
+# ClickUp MCP for AI Assistants — community fork
 
-Model Context Protocol (MCP) server enabling AI assistants to interact with ClickUp workspaces. Get complete task context with comments and images, search across projects, create and update tasks, collaborate through comments, and track time - all through natural language.
+> **This is a community fork of [hauptsacheNet/clickup-mcp](https://github.com/hauptsacheNet/clickup-mcp)**, based on upstream **v1.10.0**.
+> It adds tools for comments, dependencies, checklists, attachments, Docs, task templates, task types and custom fields.
+> Every upstream tool keeps its name, parameters and behaviour, so an existing MCP configuration keeps working.
+>
+> **Latest release:** [v1.10.0-kratos.1](https://github.com/kratos-fixer/kratos-clickup-mcp-fork/releases/tag/v1.10.0-kratos.1) · **Changes:** [CHANGELOG.md](CHANGELOG.md) · **Edits to upstream files:** [UPSTREAM-PATCHES.md](UPSTREAM-PATCHES.md)
+
+Model Context Protocol (MCP) server enabling AI assistants to interact with ClickUp workspaces. Get complete task context with comments, images and attachments, search across projects, create and update tasks, manage checklists and dependencies, read and write Docs, collaborate through comments, and track time - all through natural language.
+
+## Install the fork
+
+The fork is **not published to npm**: `npx @hauptsache.net/clickup-mcp` installs upstream, without the tools below. Install it in one of these two ways.
+
+You'll need:
+- Your `CLICKUP_API_KEY` (Profile Icon > Settings > Apps > API Token ~ usually starts with pk_)
+- Your `CLICKUP_TEAM_ID` (The 7–10 digit number in the URL when you are in the settings)
+
+### Option 1: MCPB bundle (Claude Desktop)
+
+Download `ClickUp.mcpb` from the [latest release](https://github.com/kratos-fixer/kratos-clickup-mcp-fork/releases/tag/v1.10.0-kratos.1) and open it in Claude Desktop. No Node.js installation is needed; a configuration screen asks for your API key and team ID.
+
+### Option 2: Build from the release tag
+
+Needs Node.js 16 or newer (CI uses Node 20):
+
+```bash
+git clone --branch v1.10.0-kratos.1 https://github.com/kratos-fixer/kratos-clickup-mcp-fork.git
+cd kratos-clickup-mcp-fork
+npm ci
+npm run build
+```
+
+> Running the fork straight from GitHub (`npx github:kratos-fixer/kratos-clickup-mcp-fork#v1.10.0-kratos.1`) is not supported: the repository does not commit `dist/` and has no `prepare` script, so the package arrives unbuilt.
+
+Then point your MCP client at the built server.
+
+**Claude Desktop, Windsurf, Cursor and others** — add this to your MCP configuration file:
+
+```json
+{
+  "mcpServers": {
+    "clickup": {
+      "command": "node",
+      "args": ["/absolute/path/to/kratos-clickup-mcp-fork/dist/index.js"],
+      "env": {
+        "CLICKUP_API_KEY": "your_api_key",
+        "CLICKUP_TEAM_ID": "your_team_id"
+      }
+    }
+  }
+}
+```
+
+Where to add it:
+- **Claude Desktop**: Settings > Developer > Edit Config
+- **Windsurf**: Add to your MCP configuration file
+- **Cursor**: Configure through the MCP settings panel
+
+**Claude Code (CLI):**
+```bash
+claude mcp add --scope user clickup \
+  --env CLICKUP_API_KEY=YOUR_KEY \
+  --env CLICKUP_TEAM_ID=YOUR_ID \
+  --env CLICKUP_MCP_MODE=read-minimal \
+  --env MAX_IMAGES=16 \
+  --env MAX_RESPONSE_SIZE_MB=4 \
+  -- node /absolute/path/to/kratos-clickup-mcp-fork/dist/index.js
+```
+
+> Claude Code can handle a lot of images, hence the higher limits. `read-minimal` suits coding work; pick another [mode](#mcp-modes--available-tools) if you need more tools.
+
+**OpenAI Codex** — add these lines to `~/.codex/config.toml`:
+```toml
+[mcp_servers.clickup]
+command = "node"
+args = ["/absolute/path/to/kratos-clickup-mcp-fork/dist/index.js"]
+env = { "CLICKUP_API_KEY" = "YOUR_KEY", "CLICKUP_TEAM_ID" = "YOUR_ID", "CLICKUP_MCP_MODE" = "read-minimal" }
+```
+
+> Codex seems to not be able to handle images from MCP's. See [this issue](https://github.com/openai/codex/issues/3741) for more details.
+
+## Features
+
+**🆕 marks what this fork adds**: a new tool, or a new parameter on an upstream tool. Unmarked tools work exactly as in upstream. The mode column names the lowest [mode](#mcp-modes--available-tools) that offers the tool: `read-minimal` < `read` < `write`.
+
+### 💬 Comments
+
+| Tool | Mode | What it does |
+|------|------|--------------|
+| 🆕 `resolveComment` | write | Marks a comment resolved, or reopens it with `resolved: false` |
+| 🆕 `getTaskById` | read-minimal | Shows a `[resolved]` mark on resolved comments |
+| `addComment` | write | Adds a comment, or replies inside a thread via `parent_comment_id` |
+| `editComment` | write | Corrects your own comment within the edit window instead of posting a follow-up |
+
+### 🔗 Dependencies & assignees
+
+| Tool | Mode | What it does |
+|------|------|--------------|
+| 🆕 `addTaskDependency` | write | Adds one "waits on" / "blocks" link between two tasks (`direction: waits_on \| blocks`); every other dependency stays as it is |
+| 🆕 `deleteTaskDependency` | write | Removes one such link, leaving the rest untouched |
+| 🆕 `updateTask` `remove_assignees` | write | Removes users from a task, alone or together with `assignees` in one call |
+| `updateTask` `waiting_on` / `blocking` / `linked_tasks` | write | Sets a task's dependencies and links as a whole |
+
+### ☑️ Checklists
+
+| Tool | Mode | What it does |
+|------|------|--------------|
+| 🆕 `getTaskChecklists` | read-minimal | Lists a task's checklists with items, ids and resolved state, nested items included |
+| 🆕 `createChecklist` | write | Adds a checklist to a task |
+| 🆕 `renameChecklist` | write | Renames a checklist |
+| 🆕 `deleteChecklist` | write | Deletes a checklist |
+| 🆕 `createChecklistItem` | write | Adds an item to a checklist |
+| 🆕 `editChecklistItem` | write | Renames an item, or ticks / unticks it with `resolved` |
+| 🆕 `deleteChecklistItem` | write | Deletes an item |
+
+### 📎 Attachments
+
+| Tool | Mode | What it does |
+|------|------|--------------|
+| 🆕 `getTaskById` | read-minimal | Adds an attachments block: each file's title, type, size, date and URL |
+| 🆕 `uploadAttachment` | write | Attaches one file to a task without posting a comment: a local path, an image URL or a `data:` URI, with an optional `file_name`. Credential files, files over `MAX_UPLOAD_SIZE_MB` and non-image URLs are refused before anything is sent |
+| `addComment` / `createTask` / `updateTask` | write | Upload images and files referenced as `![caption](path)` in markdown ([details](#writing-images-and-files-into-tickets)) |
+
+### 📄 Docs
+
+| Tool | Mode | What it does |
+|------|------|--------------|
+| 🆕 `searchDocuments` | read | Searches the workspace's Docs through ClickUp's v3 doc search; filter by space, folder or list, creator, deleted or archived, with cursor paging |
+| 🆕 `getDocumentPages` | read | Reads every page of a doc in one call, nested pages included, in the doc's order; `page_ids` narrows it, `plain_text` returns plain text, long output is truncated with a note naming the pages left out |
+| 🆕 `createDocumentOrPage` `folder_id` | write | Creates a new doc inside a folder (upstream: space or list) |
+| 🆕 `updateDocumentPage` `prepend` | write | Adds content to the top of a page, next to upstream's replace and append |
+| `readDocument` | read | Document details, page structure and content with navigation |
+
+### 🧩 Task templates
+
+| Tool | Mode | What it does |
+|------|------|--------------|
+| 🆕 `getTaskTemplates` | read-minimal | Lists the workspace's task templates page by page, or finds one by name |
+| 🆕 `createTaskFromTemplate` | write | Creates a task in a list from a template given by `template_id` or `template_name` |
+
+### 🏷️ Task types & Custom Task IDs
+
+| Tool | Mode | What it does |
+|------|------|--------------|
+| 🆕 Custom Task IDs | read-minimal | IDs such as `ENG-302` work in every tool that takes a task ([details](#task-types-and-custom-task-ids)) |
+| 🆕 `createTask` / `updateTask` `custom_item_id` | write | Sets the task type by number or by name, e.g. `"Bug"` |
+| 🆕 `getTaskById` | read-minimal | Shows the task type |
+
+### 🗂️ Custom fields
+
+| Tool | Mode | What it does |
+|------|------|--------------|
+| 🆕 `getListCustomFields` | read | Lists a list's custom fields with ids, types, options and whether they are writable |
+| 🆕 `createTask` / `updateTask` `custom_fields` | write | Reads and writes custom fields by name or id, with per-type value checks; `null` clears a field |
+
+### 📋 Listing tasks by status
+
+| Tool | Mode | What it does |
+|------|------|--------------|
+| 🆕 `listTasksByStatus` | read-minimal | Lists a list's tasks filtered by status names, 100 per page, with a `nextPage` pointer |
+| `searchTasks` | read-minimal | Fuzzy search by content, keywords, assignees or project context |
+
+Custom fields come from upstream PR [#38](https://github.com/hauptsacheNet/clickup-mcp/pull/38) by thystips; task types and Custom Task IDs from upstream PR [#42](https://github.com/hauptsacheNet/clickup-mcp/pull/42) by rsparkyc. Every change, with its PR, is in [CHANGELOG.md](CHANGELOG.md).
 
 ## This MCP vs Official ClickUp MCP
 
@@ -8,13 +169,13 @@ Model Context Protocol (MCP) server enabling AI assistants to interact with Clic
 
 | Feature              | This MCP                                              | Official ClickUp MCP                        |
 |----------------------|-------------------------------------------------------|---------------------------------------------|
-| **Setup**            | Local npm/npx install                                 | Remote MCP (no install)                     |
+| **Setup**            | Local install (build from tag or MCPB bundle)         | Remote MCP (no install)                     |
 | **Authentication**   | API key only                                          | OAuth only                                  |
-| **Task Context**     | Complete with comments, status history, inline images | Requires mutiple tool calls for full contxt |
+| **Task Context**     | Complete with comments, status history, inline images, attachments, checklists | Requires mutiple tool calls for full contxt |
 | **Image Support**    | Read and write: inline images with smart size budgeting, and `![](local/path.png)` uploads automatically | Upload via separate tool calls; base64 capped at ~200KB |
-| **File Attachments** | `![Export](local/report.xlsx)` attaches Excel, CSV, PDF or any other file as a file card in comments | Upload via separate tool call |
+| **File Attachments** | `![Export](local/report.xlsx)` attaches Excel, CSV, PDF or any other file as a file card in comments; `uploadAttachment` attaches a file to a task directly; task attachments are listed when reading a task | Upload via separate tool call |
 | **Search**           | Fuzzy search on recent tasks (limited scope)          | Full ClickUp search database                |
-| **Documents**        | CRUD operations                                       | CRUD + document search                      |
+| **Documents**        | CRUD + document search + whole-doc page reads         | CRUD + document search                      |
 | **Time Tracking**    | View and create entries                               | Timers and entries                          |
 | **Chat Integration** | Not supported                                         | Supported                                   |
 | **Connected Apps**   | Not supported                                         | Connected Search                            |
@@ -71,6 +232,13 @@ Turn natural language into powerful ClickUp actions:
 - *"Update the meeting notes with today's decisions"*
 - *"What documents are in the product strategy space?"*
 
+**Workflow Extras (this fork):**
+- *"Tick off the 'write tests' item on CU-abc123's checklist"*
+- *"Mark the design task as waiting on the API task"*
+- *"Create a bug from the 'Bug report' template in the frontend list"*
+- *"Attach /Users/me/exports/report.xlsx to the reporting task"*
+- *"Read the whole onboarding doc, every page"*
+
 ## Key Features
 
 ### 🔍 **Intelligent Search**
@@ -82,7 +250,8 @@ Turn natural language into powerful ClickUp actions:
 - Comment histories and team discussions (up to 250 top-level comments), including threaded comment replies
 - Task descriptions with embedded images  
 - List descriptions and project guidelines
-- Document content with page navigation
+- Document content with page navigation, or every page of a doc in one call
+- Task attachments and checklists
 - Access to complete task history and decisions
 
 ### ⏱️ **Time Tracking**
@@ -93,89 +262,16 @@ Turn natural language into powerful ClickUp actions:
 ### 📋 **Task & Document Management**
 - Create and update tasks with markdown descriptions
 - Create, read, and update documents and pages
-- Add comments and collaborate with team members
+- Add comments, reply in threads and resolve them
 - Manage priorities, due dates, assignees, and tags
-- Handle time estimates and custom field values
+- Handle time estimates, custom field values and task types
+- Manage checklists, dependencies and task templates
 
 ### 🔒 **Safety Features**
-- **Append-Only Descriptions**: Description fields are never overwritten - new content is safely appended with timestamps
+- **Appending is the default path for descriptions**: `append_description` adds a dated `**Edit (YYYY-MM-DD):**` section below the existing text; only an explicit `description` replaces the whole text, and the two cannot be combined in one call
+- **List descriptions are append-only**: `updateListInfo` never overwrites existing content
 - **Normal Field Updates**: Status, priority, assignees, tags, and dates can be updated normally (easily revertible through ClickUp's history)
-
-## Installation
-
-### Prerequisites
-
-For all installation methods, you'll need:
-- Your `CLICKUP_API_KEY` (Profile Icon > Settings > Apps > API Token ~ usually starts with pk_)
-- Your `CLICKUP_TEAM_ID` (The 7–10 digit number in the URL when you are in the settings)
-
-### Option 1: MCPB Bundle (Recommended for Claude Desktop)
-
-Download the pre-built bundle from our [releases page](https://github.com/hauptsacheNet/clickup-mcp/releases). This method requires no Node.js installation.
-
-You'll get a configuration screen where you are prompted to enter your API key and team ID.
-
-### Option 2: NPX Installation
-
-This method automatically updates to the latest version and is preferred for users who want the newest features.
-
-**For Claude Desktop, Windsurf, Cursor and others:**
-
-Add the following to your MCP configuration file:
-
-```json
-{
-  "mcpServers": {
-    "clickup": {
-      "command": "npx",
-      "args": [
-        "@hauptsache.net/clickup-mcp@latest"
-      ],
-      "env": {
-        "CLICKUP_API_KEY": "your_api_key",
-        "CLICKUP_TEAM_ID": "your_team_id"
-      }
-    }
-  }
-}
-```
-
-Replace `your_api_key` and `your_team_id` with your actual ClickUp credentials.
-
-**Where to add this configuration:**
-- **Claude Desktop**: Settings > Developer > Edit Config
-- **Windsurf**: Add to your MCP configuration file
-- **Cursor**: Configure through the MCP settings panel
-
-### Option 3: Coding Tools Integration
-
-**Claude Code (CLI):**
-```bash
-claude mcp add --scope user clickup \
-  --env CLICKUP_API_KEY=YOUR_KEY \
-  --env CLICKUP_TEAM_ID=YOUR_ID \
-  --env CLICKUP_MCP_MODE=read-minimal \
-  --env MAX_IMAGES=16 \
-  --env MAX_RESPONSE_SIZE_MB=4 \
-  -- npx -y @hauptsache.net/clickup-mcp
-```
-
-> Claude Code can handle a lot of images, thus the recommended increased limits.
- 
-> Note the `CLICKUP_MCP_MODE=read-minimal`. This is my usage recommendation, but feel free to use one of the other modes.
-
-**OpenAI Codex:**
-Add these lines to your `~/.codex/config.toml` file:
-```toml
-[mcp_servers.clickup]
-command = "npx"
-args = ["-y", "@hauptsache.net/clickup-mcp@latest"]
-env = { "CLICKUP_API_KEY" = "YOUR_KEY", "CLICKUP_TEAM_ID" = "YOUR_ID", "CLICKUP_MCP_MODE" = "read-minimal" }
-```
-
-> Codex seems to not be able to handle images from MCP's. See [this issue](https://github.com/openai/codex/issues/3741) for more details.
-
-> Note the `CLICKUP_MCP_MODE=read-minimal`. This is my usage recommendation, but feel free to use one of the other modes.
+- **Credential files are never uploaded** (see [Writing Images and Files Into Tickets](#writing-images-and-files-into-tickets))
 
 ## MCP Modes & Available Tools
 
@@ -185,24 +281,37 @@ The ClickUp MCP supports three operational modes to balance functionality, secur
 - **📖 `read`**: Full read-only access for project exploration and workflow understanding  
 - **✏️ `write`** (Default): Complete functionality for task management and productivity workflows
 
-| Tool                   | read-minimal | read | write | Description                                                                             |
-|------------------------|:------------:|:----:|:-----:|-----------------------------------------------------------------------------------------|
-| `getTaskById`          |      ✅       |  ✅   |   ✅   | Get complete task details including comments (with threaded replies), images, and metadata |
-| `addComment`           |      ❌       |  ❌   |   ✅   | Add comments to tasks, or reply inside a comment thread via `parent_comment_id`         |
-| `editComment`          |      ❌       |  ❌   |   ✅   | Correct your own comment within 24h instead of posting a follow-up                      |
-| `updateTask`           |      ❌       |  ❌   |   ✅   | Update tasks (status, priority, assignees, custom fields, task type, etc.); descriptions can be appended to or replaced entirely |
-| `createTask`           |      ❌       |  ❌   |   ✅   | Create new tasks with full markdown support, custom fields and a task type              |
-| `searchTasks`          |      ✅       |  ✅   |   ✅   | Find tasks by content, keywords, assignees, or project context                          |
-| `searchSpaces`         |      ❌       |  ✅   |   ✅   | Browse workspace structure, project organization, and documents                         |
-| `getListInfo`          |      ❌       |  ✅   |   ✅   | Get list details and available statuses for task creation                               |
-| `getListCustomFields`  |      ❌       |  ✅   |   ✅   | List a list's custom fields (ids, types, options) - run this before setting them on tasks |
-| `updateListInfo`       |      ❌       |  ❌   |   ✅   | **SAFE APPEND-ONLY** updates to list descriptions (preserves existing content)          |
-| `getTimeEntries`       |      ❌       |  ✅   |   ✅   | View time entries and analyze time spent across projects                                |
-| `createTimeEntry`      |      ❌       |  ❌   |   ✅   | Log time entries for task tracking                                                      |
-| `readDocument`         |      ❌       |  ✅   |   ✅   | Get document details, page structure, and content with navigation                       |
-| `searchDocuments`      |      ❌       |  ✅   |   ✅   | Search documents by name and space with fuzzy matching and space filtering              |
-| `updateDocumentPage`   |      ❌       |  ❌   |   ✅   | Update existing page content or name with replace/append/prepend modes                  |
-| `createDocumentOrPage` |      ❌       |  ❌   |   ✅   | Create new documents (in a space, folder or list) with first page, or add pages/sub-pages |
+🆕 = tool added by this fork.
+
+| Tool                       | read-minimal | read | write | Description |
+|----------------------------|:------------:|:----:|:-----:|-------------|
+| `getTaskById`              |      ✅      |  ✅  |  ✅   | Complete task details: comments (with threaded replies and resolved marks), images, attachments, task type and metadata |
+| `searchTasks`              |      ✅      |  ✅  |  ✅   | Find tasks by content, keywords, assignees, or project context |
+| 🆕 `listTasksByStatus`     |      ✅      |  ✅  |  ✅   | A list's tasks filtered by status, 100 per page |
+| 🆕 `getTaskChecklists`     |      ✅      |  ✅  |  ✅   | A task's checklists and items |
+| 🆕 `getTaskTemplates`      |      ✅      |  ✅  |  ✅   | The workspace's task templates, or one by name |
+| `searchSpaces`             |      ❌      |  ✅  |  ✅   | Browse workspace structure, project organization, and documents |
+| `getListInfo`              |      ❌      |  ✅  |  ✅   | Get list details and available statuses for task creation |
+| 🆕 `getListCustomFields`   |      ❌      |  ✅  |  ✅   | A list's custom fields (ids, types, options) - run this before setting them on tasks |
+| `getTimeEntries`           |      ❌      |  ✅  |  ✅   | View time entries and analyze time spent across projects |
+| `readDocument`             |      ❌      |  ✅  |  ✅   | Get document details, page structure, and content with navigation |
+| 🆕 `searchDocuments`       |      ❌      |  ✅  |  ✅   | Search Docs through ClickUp's v3 doc search, filtered by location, creator or state |
+| 🆕 `getDocumentPages`      |      ❌      |  ✅  |  ✅   | Every page of a doc in one call |
+| `addComment`               |      ❌      |  ❌  |  ✅   | Add comments to tasks, or reply inside a comment thread via `parent_comment_id` |
+| `editComment`              |      ❌      |  ❌  |  ✅   | Correct your own comment within 24h instead of posting a follow-up |
+| 🆕 `resolveComment`        |      ❌      |  ❌  |  ✅   | Resolve or reopen a comment |
+| `createTask`               |      ❌      |  ❌  |  ✅   | Create new tasks with full markdown support, custom fields and a task type |
+| `updateTask`               |      ❌      |  ❌  |  ✅   | Update tasks (status, priority, assignees, custom fields, task type, etc.); descriptions can be appended to or replaced entirely |
+| 🆕 `createTaskFromTemplate` |     ❌      |  ❌  |  ✅   | Create a task from a template |
+| 🆕 `addTaskDependency`     |      ❌      |  ❌  |  ✅   | Add one dependency between two tasks |
+| 🆕 `deleteTaskDependency`  |      ❌      |  ❌  |  ✅   | Remove one dependency between two tasks |
+| 🆕 `createChecklist` / `renameChecklist` / `deleteChecklist` | ❌ | ❌ | ✅ | Manage a task's checklists |
+| 🆕 `createChecklistItem` / `editChecklistItem` / `deleteChecklistItem` | ❌ | ❌ | ✅ | Manage checklist items, including ticking them |
+| 🆕 `uploadAttachment`      |      ❌      |  ❌  |  ✅   | Attach a file to a task without a comment |
+| `updateListInfo`           |      ❌      |  ❌  |  ✅   | **SAFE APPEND-ONLY** updates to list descriptions (preserves existing content) |
+| `createTimeEntry`          |      ❌      |  ❌  |  ✅   | Log time entries for task tracking |
+| `updateDocumentPage`       |      ❌      |  ❌  |  ✅   | Update existing page content or name with replace/append/prepend modes |
+| `createDocumentOrPage`     |      ❌      |  ❌  |  ✅   | Create new documents (in a space, folder or list) with first page, or add pages/sub-pages |
 
 ### Setting the Mode
 
@@ -212,8 +321,8 @@ Add the mode to your MCP configuration:
 {
   "mcpServers": {
     "clickup": {
-      "command": "npx",
-      "args": ["-y", "@hauptsache.net/clickup-mcp@latest"],
+      "command": "node",
+      "args": ["/absolute/path/to/kratos-clickup-mcp-fork/dist/index.js"],
       "env": {
         "CLICKUP_API_KEY": "your_api_key",
         "CLICKUP_TEAM_ID": "your_team_id",
@@ -277,8 +386,8 @@ Create a task called "API Integration" with description:
 See related task: https://app.clickup.com/t/abc123
 ```
 
-**Append-Only Updates (Safe):**
-When updating task descriptions, content is safely appended:
+**Appending to a description:**
+`updateTask` with `append_description` adds a dated section and keeps the existing text:
 ```markdown
 [Existing task description content]
 
@@ -288,7 +397,7 @@ When updating task descriptions, content is safely appended:
 - Performance requirement: < 2s load time
 ```
 
-This ensures no existing content is ever lost while maintaining a clear audit trail.
+To restructure, shorten or correct a description, pass `description` instead: it replaces the whole text, so read the task first and repeat everything worth keeping.
 
 ## Writing Images and Files Into Tickets
 
@@ -347,6 +456,7 @@ Notes:
   images before creating the task; only an upload failing afterwards is reported as a
   warning, since the task already exists at that point.
 - Attachments always belong to a task, so document pages cannot embed uploads this way.
+- To attach a file without writing a comment, use `uploadAttachment`. It applies the same credential-file and URL rules, and the `MAX_UPLOAD_SIZE_MB` limit.
 
 ## Task Types and Custom Task IDs
 
@@ -379,6 +489,10 @@ aborts before anything is written. `getTaskById` shows it as
 - Designed for productivity enhancement, not administrative operations
 
 These limitations ensure reliable performance while covering the most common use cases for both development context and productivity management.
+
+## Credits
+
+All the groundwork is [hauptsacheNet/clickup-mcp](https://github.com/hauptsacheNet/clickup-mcp) by Marco Pfeiffer (Nemo64) and its contributors. Thank you!
 
 ## License
 
