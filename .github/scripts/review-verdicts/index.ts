@@ -79,7 +79,11 @@ export function finalReviewOpen(comments: IssueComment[], author: string, head: 
   const end = lines.indexOf(FINAL_REVIEW_DATA_CLOSE, 1);
   // A marked review with a broken data block must not clear the gate.
   if (lines[0] !== FINAL_REVIEW_DATA_OPEN || end < 0) return ["final-review-malformed"];
-  return lines.slice(1, end)
+  const data = lines.slice(1, end);
+  // The recorder writes these lines to block the merge even when no row is open.
+  if (data.some((line) => line.startsWith("ESCALATED"))) return ["final-review-escalated"];
+  if (data.some((line) => line.startsWith("APPROACH-WRONG:"))) return ["final-review-approach-wrong"];
+  return data
     .filter((line) => line.endsWith(": open") || (line.endsWith(": noted") && !/^[^\s:]+ \[P3\] /.test(line)))
     .map((line) => line.split(/[ :]/, 1)[0]!)
     .filter(Boolean);

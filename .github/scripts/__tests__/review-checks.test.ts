@@ -66,6 +66,13 @@ describe("review-verdicts", () => {
     expect(openFindings(pr({ reviews: [], comments: [], issueComments: [broken] }))).toEqual(["final-review-malformed"]);
   });
 
+  test("escalated or approach-wrong final review keeps the check red", () => {
+    const review = (line: string) => ({ user: { login: AUTHOR }, body: [`<!-- final-review head=${HEAD} task=t -->`, "<!-- final-review-data", line, "-->"].join("\n") });
+    const base = { reviews: [], comments: [] };
+    expect(openFindings(pr({ ...base, issueComments: [review("ESCALATED: full review requested")] }))).toEqual(["final-review-escalated"]);
+    expect(openFindings(pr({ ...base, issueComments: [review("APPROACH-WRONG: module — wrong place")] }))).toEqual(["final-review-approach-wrong"]);
+  });
+
   test("DeepSeek body findings are open until answered in a summary", () => {
     const deepseek = { id: 7, user: { login: "bot" }, body: "<!-- deepseek-review head=x -->\nFindings outside the diff lines:\n- `a.ts:3` — P2 bug\n\n- `b.ts:?` — P3 nit" };
     const base = { reviews: [deepseek], comments: [] };
