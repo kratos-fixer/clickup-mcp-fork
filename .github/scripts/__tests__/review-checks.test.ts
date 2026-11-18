@@ -73,6 +73,23 @@ describe("review-verdicts", () => {
     expect(openFindings(pr({ ...base, issueComments: [review("APPROACH-WRONG: module — wrong place")] }))).toEqual(["final-review-approach-wrong"]);
   });
 
+  test.each([
+    ["full clean", [`<!-- final-review head=${HEAD} task=t -->`, "<!-- final-review-data", "cr-1 [P2] a.ts:1 bug: fixed", "-->"].join("\n"), []],
+    ["full with findings", [`<!-- final-review head=${HEAD} task=t -->`, "<!-- final-review-data", "cr-1 [P2] a.ts:1 bug: open", "-->"].join("\n"), ["cr-1"]],
+    ["light", `<!-- final-review head=${HEAD} light -->`, []],
+    ["off", `<!-- final-review head=${HEAD} off -->\n`, []],
+    ["light marker with extra text", `<!-- final-review head=${HEAD} light -->\n### text`, ["final-review-malformed"]],
+    ["unknown one-line marker", `<!-- final-review head=${HEAD} lite -->`, ["final-review-malformed"]],
+  ])("final review marker: %s", (_name, body, open) => {
+    expect(openFindings(pr({ reviews: [], comments: [], issueComments: [{ user: { login: AUTHOR }, body }] }))).toEqual(open);
+  });
+
+  test("a light marker from someone other than the author does not count", () => {
+    const light = { user: { login: "other" }, body: `<!-- final-review head=${HEAD} light -->` };
+    const broken = { user: { login: AUTHOR }, body: `<!-- final-review head=${HEAD} task=t -->\n### text` };
+    expect(openFindings(pr({ reviews: [], comments: [], issueComments: [broken, light] }))).toEqual(["final-review-malformed"]);
+  });
+
   test("DeepSeek body findings are open until answered in a summary", () => {
     const deepseek = { id: 7, user: { login: "bot" }, body: "<!-- deepseek-review head=x -->\nFindings outside the diff lines:\n- `a.ts:3` — P2 bug\n\n- `b.ts:?` — P3 nit" };
     const base = { reviews: [deepseek], comments: [] };

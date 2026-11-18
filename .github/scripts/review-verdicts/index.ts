@@ -75,7 +75,10 @@ export function finalReviewOpen(comments: IssueComment[], author: string, head: 
   const marker = `${FINAL_REVIEW_PREFIX}${head} `;
   const latest = comments.filter((comment) => comment.user?.login === author && (comment.body ?? "").split(/\r?\n/, 1)[0]?.startsWith(marker)).at(-1);
   if (!latest) return [];
-  const lines = (latest.body ?? "").trim().split(/\r?\n/).slice(1);
+  const body = (latest.body ?? "").trim();
+  // A light-tier or switched-off final review is a one-line marker with no data block.
+  if (body === `${FINAL_REVIEW_PREFIX}${head} light -->` || body === `${FINAL_REVIEW_PREFIX}${head} off -->`) return [];
+  const lines = body.split(/\r?\n/).slice(1);
   const end = lines.indexOf(FINAL_REVIEW_DATA_CLOSE, 1);
   // A marked review with a broken data block must not clear the gate.
   if (lines[0] !== FINAL_REVIEW_DATA_OPEN || end < 0) return ["final-review-malformed"];
