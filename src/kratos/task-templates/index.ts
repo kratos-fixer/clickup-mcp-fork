@@ -2,15 +2,35 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { CLICKUP_V2_BASE, clickupGet, clickupPost, teamUrl, toolError, toolText } from "../clickup-api";
 import { CREATE_TASK_FROM_TEMPLATE_TOOL, GET_TASK_TEMPLATES_TOOL } from "../settings";
-import { TEMPLATE_SEARCH_MAX_PAGES } from "./settings";
+import { TEMPLATE_PAGE_CACHE_MS, TEMPLATE_SEARCH_MAX_PAGES } from "./settings";
 
 export type TaskTemplate = { id: string; name: string };
 type TemplateLookup = { match?: TaskTemplate; seen: TaskTemplate[] };
 
-export async function fetchTemplatePage(page: number): Promise<TaskTemplate[]> {
+// Promises are cached, not results, so concurrent lookups of one page share a single request.
+const pageCache = new Map<number, Promise<TaskTemplate[]>>();
+
+export function clearTemplatePageCache() {
+  pageCache.clear();
+}
+
+async function loadTemplatePage(page: number): Promise<TaskTemplate[]> {
   const data = await clickupGet<{ templates?: any[] }>(teamUrl("/taskTemplate"), { page });
   const templates = Array.isArray(data.templates) ? data.templates : [];
   return templates.map((t) => ({ id: String(t.id), name: String(t.name ?? "") }));
+}
+
+export function fetchTemplatePage(page: number): Promise<TaskTemplate[]> {
+  const cached = pageCache.get(page);
+  if (cached) return cached;
+  const promise = loadTemplatePage(page);
+  const forget = () => {
+    if (pageCache.get(page) === promise) pageCache.delete(page);
+  };
+  pageCache.set(page, promise);
+  promise.catch(forget);
+  setTimeout(forget, TEMPLATE_PAGE_CACHE_MS).unref?.();
+  return promise;
 }
 
 export async function findTemplateByName(name: string, startPage = 0): Promise<TemplateLookup> {

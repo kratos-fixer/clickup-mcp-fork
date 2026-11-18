@@ -11,8 +11,11 @@ type Seen = { method: string; path: string; body?: string };
 
 const template = (id: string, name: string) => ({ id, name });
 
+let clearCache: () => void = () => {};
+
 // Serves template pages in order, then the create replies, and records every request.
 function mockClickUp(pages: Reply[], creates: Reply[] = []) {
+  clearCache();
   const agent = new MockAgent();
   agent.disableNetConnect();
   setGlobalDispatcher(agent);
@@ -39,6 +42,8 @@ function mockClickUp(pages: Reply[], creates: Reply[] = []) {
 
 async function loadTools() {
   const { registerKratosToolsRead, registerKratosToolsWrite } = await import("../index");
+  clearCache = (await import("../task-templates")).clearTemplatePageCache;
+  clearCache();
   const tools: Record<string, any> = {};
   const server = { tool: (name: string, ...rest: any[]) => (tools[name] = rest[rest.length - 1]) } as any;
   registerKratosToolsRead(server);
@@ -148,5 +153,30 @@ test("createTaskFromTemplate passes ClickUp's 404 answer through", async () => {
   const result = await createTaskFromTemplate({ list_id: "nope", name: "S336", template_id: "t1" });
   assert.equal(result.isError, true);
   assert.match(result.content[0].text, /HTTP 404 \(SUBCAT_016\): List not found/);
+  await agent.close();
+});
+
+test("repeated name lookups reuse cached template pages", async () => {
+  const { agent, seen } = mockClickUp(
+    [{ body: { templates: [template("t1", "Bug")] } }, { body: { templates: [template("t7", "Story card")] } }],
+    [{ body: { id: "a" } }, { body: { id: "b" } }]
+  );
+  const { createTaskFromTemplate } = await loadTools();
+  for (const name of ["S1", "S2"]) {
+    await createTaskFromTemplate({ list_id: "L1", name, template_name: "Story card" });
+  }
+  assert.deepEqual(seen.map((s) => s.method), ["GET", "GET", "POST", "POST"]);
+  await agent.close();
+});
+
+test("a failed template page is not cached", async () => {
+  const { agent, seen } = mockClickUp([
+    { status: 500, body: { err: "boom" } },
+    { body: { templates: [template("t1", "Bug")] } },
+  ]);
+  const { getTaskTemplates } = await loadTools();
+  assert.equal((await getTaskTemplates({})).isError, true);
+  assert.match((await getTaskTemplates({})).content[0].text, /- Bug \(template_id: t1\)/);
+  assert.equal(seen.length, 2);
   await agent.close();
 });
