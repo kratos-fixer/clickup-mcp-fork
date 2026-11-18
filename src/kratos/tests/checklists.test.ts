@@ -148,3 +148,22 @@ test("an unknown checklist id returns ClickUp's error as a tool error", async ()
   assert.match(text(result), /HTTP 404 \(CHECK_001\): Checklist not found/);
   await agent.close();
 });
+
+test("createChecklist resolves a Custom Task ID before posting to the task", async () => {
+  const agent = new MockAgent();
+  agent.disableNetConnect();
+  setGlobalDispatcher(agent);
+  const paths: string[] = [];
+  const pool = agent.get("https://api.clickup.com");
+  pool
+    .intercept({ path: "/api/v2/task/ENG-302?custom_task_ids=true&team_id=team1", method: "GET" })
+    .reply(200, (request) => (paths.push(String(request.path)), { id: "task123" }));
+  pool
+    .intercept({ path: "/api/v2/task/task123/checklist", method: "POST" })
+    .reply(200, (request) => (paths.push(String(request.path)), { checklist: { id: "c9", name: "Tasks", items: [] } }));
+  const tools = await loadTools();
+  const out = text(await tools.createChecklist({ task_id: "ENG-302", name: "Tasks" }));
+  assert.deepEqual(paths, ["/api/v2/task/ENG-302?custom_task_ids=true&team_id=team1", "/api/v2/task/task123/checklist"]);
+  assert.equal(out, "Checklist: Tasks (checklist_id: c9), 0 of 0 resolved");
+  await agent.close();
+});

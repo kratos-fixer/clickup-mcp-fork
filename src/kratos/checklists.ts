@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { CLICKUP_V2_BASE, clickupDelete, clickupGet, clickupPost, clickupPut, toolError, toolText } from "./clickup-api";
+import { TASK_ID_FORMAT_HINT, resolveTaskId, taskIdSchema } from "../shared/task-ids";
 import { CHECKLIST_WRITE_TOOLS, GET_TASK_CHECKLISTS_TOOL } from "./settings";
 
 export interface ChecklistItem {
@@ -48,11 +49,12 @@ export function registerChecklistReadTool(server: McpServer) {
   server.tool(
     GET_TASK_CHECKLISTS_TOOL,
     "Lists the checklists of a task with their items, ids and resolved state. Use it to find the checklist_id and item_id the checklist write tools need.",
-    { task_id: z.string().min(1).describe("The task ID whose checklists to read") },
+    { task_id: taskIdSchema(`The task whose checklists to read: ${TASK_ID_FORMAT_HINT}`) },
     { readOnlyHint: true },
     async ({ task_id }) => {
       try {
-        const task = await clickupGet<{ checklists?: Checklist[] }>(`${CLICKUP_V2_BASE}/task/${encodeURIComponent(task_id)}`);
+        const taskId = await resolveTaskId(task_id);
+        const task = await clickupGet<{ checklists?: Checklist[] }>(`${CLICKUP_V2_BASE}/task/${encodeURIComponent(taskId)}`);
         return toolText(formatChecklists(task.checklists ?? []));
       } catch (error) {
         return toolError("reading checklists", error);
@@ -69,10 +71,11 @@ export function registerChecklistWriteTools(server: McpServer) {
   server.tool(
     CHECKLIST_WRITE_TOOLS.createChecklist,
     "Creates an empty checklist on a task. Add its items with createChecklistItem.",
-    { task_id: z.string().min(1).describe("The task ID to add the checklist to"), name: name.describe("Checklist name") },
+    { task_id: taskIdSchema(`The task to add the checklist to: ${TASK_ID_FORMAT_HINT}`), name: name.describe("Checklist name") },
     async ({ task_id, name }) => {
       try {
-        return checklistResult(await clickupPost(`${CLICKUP_V2_BASE}/task/${encodeURIComponent(task_id)}/checklist`, { name }));
+        const taskId = await resolveTaskId(task_id);
+        return checklistResult(await clickupPost(`${CLICKUP_V2_BASE}/task/${encodeURIComponent(taskId)}/checklist`, { name }));
       } catch (error) {
         return toolError("creating checklist", error);
       }
