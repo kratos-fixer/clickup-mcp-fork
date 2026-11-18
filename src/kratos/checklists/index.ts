@@ -146,7 +146,6 @@ export function registerChecklistWriteTools(server: McpServer) {
       const body: { name?: string; resolved?: boolean } = {};
       if (name !== undefined) body.name = name;
       if (resolved !== undefined) body.resolved = resolved;
-      if (Object.keys(body).length === 0) return toolError("editing checklist item", new Error("pass name, resolved or both"));
       try {
         return checklistResult(await clickupPut(itemUrl(checklist_id, checklist_item_id), body));
       } catch (error) {

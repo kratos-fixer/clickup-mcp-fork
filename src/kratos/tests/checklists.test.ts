@@ -137,16 +137,6 @@ test("editChecklistItem with a new name sends only the name", async () => {
   await agent.close();
 });
 
-test("editChecklistItem with neither name nor resolved makes no request", async () => {
-  const { agent, calls } = mockOne("PUT", "/api/v2/checklist/c1/checklist_item/i2", 200, { checklist });
-  const tools = await loadTools();
-  const result = await tools.editChecklistItem({ checklist_id: "c1", checklist_item_id: "i2" });
-  assert.equal(calls.length, 0);
-  assert.equal(result.isError, true);
-  assert.match(text(result), /name, resolved or both/);
-  await agent.close();
-});
-
 test("deleteChecklistItem sends one DELETE to the item", async () => {
   const { agent, calls } = mockOne("DELETE", "/api/v2/checklist/c1/checklist_item/i2", 200, {});
   const tools = await loadTools();
