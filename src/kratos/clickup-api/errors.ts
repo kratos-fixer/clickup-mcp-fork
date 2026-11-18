@@ -111,12 +111,14 @@ export function readClickUpError(
   text: string,
 ): ClickUpApiError {
   const body = response.ok ? undefined : parseJsonObject(text);
-  const cut = body ? undefined : nonEmptyString(text.trim().slice(0, CLICKUP_ERROR_BODY_MAX_CHARS));
+  const raw = body ? nonEmptyString(body.err) ?? nonEmptyString(body.message) : text.trim();
+  // Redact before the cut: a token split by the cut would no longer match.
+  const cut = nonEmptyString(withoutToken(raw ?? "").slice(0, CLICKUP_ERROR_BODY_MAX_CHARS));
   return new ClickUpApiError({
     kind: response.ok ? "response" : clickupErrorKind(response.status),
     status: response.status,
     ecode: nonEmptyString(body?.ECODE),
-    detail: nonEmptyString(body?.err) ?? nonEmptyString(body?.message) ?? cut ?? response.statusText,
+    detail: cut ?? response.statusText,
     method,
     path: new URL(url).pathname,
     rateLimitResetAt: response.status === 429 ? readResetAt(response) : undefined,

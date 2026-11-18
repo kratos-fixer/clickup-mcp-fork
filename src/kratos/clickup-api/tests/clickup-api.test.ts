@@ -203,6 +203,14 @@ describe("ClickUp error statuses", () => {
     assert.ok(error.message.startsWith("ClickUp GET /api/v2/task/t1 failed with HTTP 502: x"));
   });
 
+  test("a long JSON err is cut to the body limit", async () => {
+    const long = "e".repeat(api.CLICKUP_ERROR_BODY_MAX_CHARS + 50);
+    agent.get(ORIGIN).intercept({ path: "/api/v2/task/t1", method: "GET" }).reply(400, { err: long, ECODE: "INPUT_005" });
+    const error = await rejection(api.clickupGet(`${api.CLICKUP_V2_BASE}/task/t1`));
+    assert.equal(error.detail, "e".repeat(api.CLICKUP_ERROR_BODY_MAX_CHARS));
+    assert.equal(error.message.includes(long), false);
+  });
+
   test("429 with the reset header carries rateLimitResetAt and the retry time", async () => {
     agent
       .get(ORIGIN)
@@ -285,6 +293,17 @@ describe("the token never reaches a message", () => {
     const error = await rejection(api.clickupGet(`${api.CLICKUP_V2_BASE}/task/t1`));
     assert.equal(error.detail, "bad key [redacted]");
     assert.equal(error.message.includes("test-key"), false);
+  });
+
+  test("a token split by the body cut never reaches the message", async () => {
+    const before = "x".repeat(api.CLICKUP_ERROR_BODY_MAX_CHARS - 4);
+    agent.get(ORIGIN).intercept({ path: "/api/v2/task/t1", method: "GET" }).reply(502, `${before}test-key and more`);
+    const error = await rejection(api.clickupGet(`${api.CLICKUP_V2_BASE}/task/t1`));
+    for (let length = 4; length <= "test-key".length; length++) {
+      const prefix = "test-key".slice(0, length);
+      assert.equal(error.detail.includes(prefix), false, error.detail);
+      assert.equal(error.message.includes(prefix), false, error.message);
+    }
   });
 
   test("ClickUpApiError redacts the token from ecode", async () => {
