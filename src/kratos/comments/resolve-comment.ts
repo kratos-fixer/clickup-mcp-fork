@@ -11,7 +11,7 @@ export function registerResolveComment(server: McpServer) {
       comment_id: z.string().min(1).describe("The comment_id printed by getTaskById"),
       resolved: z.boolean().optional().describe("true to resolve (default), false to reopen"),
     },
-    { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+    { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
     async ({ comment_id, resolved }) => {
       const state = resolved ?? true;
       try {
